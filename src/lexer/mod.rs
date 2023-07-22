@@ -263,4 +263,35 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_next_token_symbols() {
+        const CODE: &'static str = r#"
+        !-/*5
+        5 < 10 > 5
+
+        "string"
+        `interpolated string`
+        "#;
+
+        let mut expected_tokens: Vec<(TokenType, String)> = Vec::new();
+        expected_tokens.push((TokenType::RBRACE, "}".to_owned()));
+
+        let mut lexer = Lexer::new(CODE.as_ref());
+
+        for (t, literal) in expected_tokens {
+            let token = lexer.scan();
+
+            assert_eq!(
+                token.t, t,
+                "\n\nExpected token {:?} got {:?}.\n\n",
+                t, token.t
+            );
+            assert_eq!(
+                token.literal, literal,
+                "Expected literal {} got {}",
+                literal, token.literal
+            );
+        }
+    }
 }

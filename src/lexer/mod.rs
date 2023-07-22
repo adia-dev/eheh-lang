@@ -162,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_next_token() {
-        const CODE: &'static str = "= + ( ) { } [ ] , : ;";
+        const CODE: &'static str = "=+(){}[],:;";
 
         let mut expected_tokens: Vec<(TokenType, String)> = Vec::new();
         expected_tokens.push((TokenType::ASSIGN, "=".to_owned()));

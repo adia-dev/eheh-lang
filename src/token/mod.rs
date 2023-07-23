@@ -6,10 +6,17 @@ pub mod token_type;
 pub struct Token {
     pub t: TokenType,
     pub literal: String,
+    pub line: usize,
+    pub position: usize,
 }
 
 impl Token {
-    pub fn new(t: TokenType, literal: String) -> Self {
-        Self { t, literal }
+    pub fn new(t: TokenType, literal: String, line: usize, position: usize) -> Self {
+        Self {
+            t,
+            literal,
+            line,
+            position,
+        }
     }
 }

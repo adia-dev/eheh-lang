@@ -2,41 +2,58 @@ use std::fmt::Display;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub enum TokenType {
-    AMPERSAND,
-    ASSIGN,
-    ASTERISK,
-    AT,
-    BACKSLASH,
-    BANG,
-    COLON,
-    COMMA,
-    DOLLAR,
-    DOT,
-    DQUOTE,
-    EOF,
-    FORWARDSLASH,
-    GT,
-    HASH,
-    IDENT,
-    ILLEGAL,
-    INT,
+    AMPERSAND,    // &
+    ASSIGN,       // =
+    ASTERISK,     // *
+    AND,          // &&
+    AT,           // @
+    BACKSLASH,    // \
+    BANG,         // !
+    COLON,        // :
+    COMMA,        // ,
+    COMMENT,      // //
+    COMMENTBLOCK,  // /*
+    DECR,         // --
+    DOLLAR,       // $
+    DOT,          // .
+    DQUOTE,       // "
+    EOF,          // \0
+    EQ,           // ==
+    EXPONENT,     // ^
+    FORWARDSLASH, // /
+    GT,           // >
+    GTE,          // >=
+    HASH,         // #
+    IDENT,        // e.g: name
+    ILLEGAL,      // unsupported tokens
+    INT,          // e.g: 10
+    INCR,         // ++
     KEYWORD(KeywordTokenType),
-    LBRACE,
-    LBRACK,
-    LPAREN,
-    LT,
-    MINUS,
-    PERCENT,
-    PIPE,
-    PLUS,
-    QUESTION,
-    RBRACE,
-    RBRACK,
-    RPAREN,
-    SEMICOLON,
-    SQUOTE,
-    TILDE,
-    UNDERSCORE,
+    LBRACE,     // {
+    LBRACK,     // [
+    LPAREN,     // (
+    LSHIFT,     // <<
+    LT,         // <
+    LTE,        // <=
+    MINUS,      // -
+    NEQ,        // !=
+    OR,         // ||
+    PERCENT,    // %
+    PIPE,       // |
+    PLUS,       // +
+    QUESTION,   // ?
+    RANGE,      // ..
+    IRANGE,     // ..=
+    RBRACE,     // }
+    RBRACK,     // ]
+    RPAREN,     // )
+    RSHIFT,     // >>
+    SEMICOLON,  // ;
+    SCOPE,      // ::
+    SQUOTE,     // '
+    STRING,     // e.g: "Abdoulaye"
+    TILDE,      // ~
+    UNDERSCORE, // _
 }
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
@@ -50,6 +67,7 @@ pub enum KeywordTokenType {
     ELSE,
     END,
     DO,
+    NULL,
 }
 impl KeywordTokenType {
     pub fn from_str(identifier: &str) -> Option<KeywordTokenType> {
@@ -63,6 +81,7 @@ impl KeywordTokenType {
             "else" => Some(KeywordTokenType::ELSE),
             "end" => Some(KeywordTokenType::END),
             "do" => Some(KeywordTokenType::DO),
+            "null" => Some(KeywordTokenType::NULL),
             _ => None,
         }
     }

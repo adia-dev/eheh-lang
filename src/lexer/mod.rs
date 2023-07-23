@@ -20,8 +20,8 @@ impl Lexer {
             position: 0,
             next_position: 0,
             c: '\0',
-            line: 1,
-            last_new_line: 1,
+            line: 0,
+            last_new_line: 0,
         };
 
         new_lexer.advance();

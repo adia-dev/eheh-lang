@@ -69,6 +69,7 @@ pub enum KeywordTokenType {
     END,
     DO,
     NULL,
+    RETURN,
 }
 impl KeywordTokenType {
     pub fn from_str(identifier: &str) -> Option<KeywordTokenType> {
@@ -84,6 +85,7 @@ impl KeywordTokenType {
             "end" => Some(KeywordTokenType::END),
             "do" => Some(KeywordTokenType::DO),
             "null" => Some(KeywordTokenType::NULL),
+            "return" => Some(KeywordTokenType::RETURN),
             _ => None,
         }
     }

@@ -1,5 +1,8 @@
 use crate::{
-    ast::{expressions::identifier::Identifier, statements::declare_statements::DeclareStatement},
+    ast::{
+        expressions::identifier::Identifier,
+        statements::{declare_statements::DeclareStatement, return_statements::ReturnStatement},
+    },
     lexer::Lexer,
     program::Program,
     token::{
@@ -69,8 +72,24 @@ impl<'a> Parser<'a> {
             TokenType::KEYWORD(KeywordTokenType::LET)
             | TokenType::KEYWORD(KeywordTokenType::CONST)
             | TokenType::KEYWORD(KeywordTokenType::VAR) => self.parse_declare_statement(),
+            TokenType::KEYWORD(KeywordTokenType::RETURN) => self.parse_return_statement(),
             _ => Err("".into()),
         }
+    }
+
+    fn parse_return_statement(&mut self) -> Result<Box<dyn Statement>> {
+        let current_token = &self.current_token.clone();
+
+        loop {
+            if self.current_token_is(TokenType::SEMICOLON) {
+                break;
+            }
+            self.next_token();
+        }
+
+        let stmt = ReturnStatement::new(current_token.clone(), None);
+
+        Ok(Box::new(stmt))
     }
 
     fn parse_declare_statement(&mut self) -> Result<Box<dyn Statement>> {
@@ -160,5 +179,22 @@ mod tests {
                     }
                 }
             });
+    }
+
+    #[test]
+    fn test_return_statement() {
+        const CODE: &'static str = r#"
+            return x;
+            return y + b;
+            return;
+            return ("Abdoulaye Dia");
+        "#;
+
+        let mut lexer = Lexer::new(CODE);
+        let mut parser = Parser::new(&mut lexer);
+
+        let program = parser.parse().unwrap();
+
+        assert_eq!(program.statements.len(), 4);
     }
 }

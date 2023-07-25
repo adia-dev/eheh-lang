@@ -6,18 +6,18 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct ExpressionStatetmentStatement {
+pub struct ExpressionStatement {
     pub token: Token,
     pub expression: Box<dyn Expression>,
 }
 
-impl ExpressionStatetmentStatement {
+impl ExpressionStatement {
     pub fn new(token: Token, expression: Box<dyn Expression>) -> Self {
         Self { token, expression }
     }
 }
 
-impl Node for ExpressionStatetmentStatement {
+impl Node for ExpressionStatement {
     fn get_token_literal(&self) -> String {
         self.token.literal.to_string()
     }
@@ -27,11 +27,11 @@ impl Node for ExpressionStatetmentStatement {
     }
 }
 
-impl Statement for ExpressionStatetmentStatement {
+impl Statement for ExpressionStatement {
     fn process(&self) {}
 }
 
-impl ToString for ExpressionStatetmentStatement {
+impl ToString for ExpressionStatement {
     fn to_string(&self) -> String {
         self.expression.to_string()
     }

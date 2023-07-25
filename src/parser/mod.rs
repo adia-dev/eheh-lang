@@ -1,7 +1,13 @@
+use std::collections::HashMap;
+
 use crate::{
     ast::{
         expressions::identifier::Identifier,
-        statements::{declare_statements::DeclareStatement, return_statements::ReturnStatement},
+        precedence::Precedence,
+        statements::{
+            declare_statements::DeclareStatement, expression_statements::ExpressionStatement,
+            return_statements::ReturnStatement,
+        },
     },
     lexer::Lexer,
     program::Program,
@@ -9,30 +15,46 @@ use crate::{
         token_type::{KeywordTokenType, TokenType},
         Token,
     },
-    traits::statement::Statement,
-    types::Result,
+    types::{ExpressionResponse, InfixParseFn, PrefixParseFn, Result, StatementResponse},
 };
 
-#[derive(Debug)]
 pub struct Parser<'a> {
     lexer: &'a mut Lexer,
     current_token: Token,
     next_token: Token,
     errors: Vec<String>,
+    prefix_fns: HashMap<TokenType, PrefixParseFn<'a>>,
+    infix_fns: HashMap<TokenType, InfixParseFn<'a>>,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(lexer: &'a mut Lexer) -> Self {
         let current_token = lexer.scan();
         let next_token = lexer.scan();
+        let prefix_fns = HashMap::new();
+        let infix_fns = HashMap::new();
 
-        Self {
+        let mut parser = Self {
             lexer,
             current_token,
             next_token,
             errors: Vec::new(),
-        }
+            prefix_fns,
+            infix_fns,
+        };
+
+        parser.register_prefix_fns();
+        parser.register_infix_fns();
+
+        parser
     }
+
+    fn register_prefix_fns(&mut self) {
+        self.prefix_fns
+            .insert(TokenType::IDENT, Self::parse_identifier);
+    }
+
+    fn register_infix_fns(&mut self) {}
 
     fn next_token(&mut self) {
         self.current_token = self.next_token.clone();
@@ -88,14 +110,14 @@ impl<'a> Parser<'a> {
                 TokenType::EOF | TokenType::ILLEGAL => break,
                 TokenType::SEMICOLON => {
                     self.next_token();
-                    continue
-                },
+                    continue;
+                }
                 _ => {
                     match self.parse_statement() {
                         Ok(stmt) => {
                             new_program.statements.push(stmt);
                         }
-                        Err(err) => return Err(err),
+                        Err(_err) => (),
                     }
 
                     self.next_token();
@@ -106,17 +128,21 @@ impl<'a> Parser<'a> {
         Ok(new_program)
     }
 
-    fn parse_statement(&mut self) -> Result<Box<dyn Statement>> {
+    fn parse_statement(&mut self) -> StatementResponse {
         match self.current_token.t {
             TokenType::KEYWORD(KeywordTokenType::LET)
             | TokenType::KEYWORD(KeywordTokenType::CONST)
             | TokenType::KEYWORD(KeywordTokenType::VAR) => self.parse_declare_statement(),
             TokenType::KEYWORD(KeywordTokenType::RETURN) => self.parse_return_statement(),
-            _ => Err("".into()),
+            _ => self.parse_expression_statement(),
         }
     }
 
-    fn parse_return_statement(&mut self) -> Result<Box<dyn Statement>> {
+    fn parse_identifier(&mut self) -> ExpressionResponse {
+        Ok(Box::new(Identifier::from_token(&self.current_token)))
+    }
+
+    fn parse_return_statement(&mut self) -> StatementResponse {
         let current_token = &self.current_token.clone();
 
         loop {
@@ -135,7 +161,41 @@ impl<'a> Parser<'a> {
         Ok(Box::new(stmt))
     }
 
-    fn parse_declare_statement(&mut self) -> Result<Box<dyn Statement>> {
+    fn parse_expression_statement(&mut self) -> StatementResponse {
+        match self.parse_expression(Precedence::LOWEST) {
+            Ok(expression) => {
+                let stmt = ExpressionStatement::new(self.current_token.clone(), expression);
+
+                if self.next_token_is(TokenType::SEMICOLON) {
+                    self.next_token();
+                }
+
+                Ok(Box::new(stmt))
+            }
+            Err(err) => Err(err),
+        }
+    }
+
+    fn parse_expression(&mut self, precedence: Precedence) -> ExpressionResponse {
+        if let Some(prefix_fn) = self.prefix_fns.get(&self.current_token.t) {
+            let left_exp = prefix_fn(self);
+
+            left_exp
+        } else {
+            self.errors.push(format!(
+                "Parsing Error: Could not find a prefix parsing function for {}",
+                self.current_token.t
+            ));
+
+            Err(format!(
+                "Parsing Error: Could not find a prefix parsing function for {}",
+                self.current_token.t
+            )
+            .into())
+        }
+    }
+
+    fn parse_declare_statement(&mut self) -> StatementResponse {
         let current_token = &self.current_token.clone();
 
         if !self.expect_next_token(TokenType::IDENT) {
@@ -196,7 +256,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::statements::declare_statements::DeclareStatement, lexer::Lexer, parser::Parser,
+        ast::{statements::{declare_statements::DeclareStatement, expression_statements::ExpressionStatement}, expressions::identifier::Identifier}, lexer::Lexer, parser::Parser, token::token_type::TokenType, traits::node::Node,
     };
 
     #[test]
@@ -214,8 +274,7 @@ mod tests {
 
         let program = parser.parse().unwrap();
 
-        println!("{:?}", parser.errors);
-
+        assert!(parser.errors.is_empty());
         assert_eq!(program.statements.len(), 5);
 
         let expected_identifiers: Vec<&str> =
@@ -250,6 +309,28 @@ mod tests {
 
         let program = parser.parse().unwrap();
 
+        assert!(parser.errors.is_empty());
         assert_eq!(program.statements.len(), 4);
+    }
+
+    #[test]
+    fn test_expression_statement() {
+        const CODE: &'static str = r#"
+            name;
+        "#;
+
+        let mut lexer = Lexer::new(CODE);
+        let mut parser = Parser::new(&mut lexer);
+
+        let program = parser.parse().unwrap();
+
+        let exp_stmt = program.statements[0].as_any().downcast_ref::<ExpressionStatement>().unwrap();
+        let exp_ident = exp_stmt.expression.as_any().downcast_ref::<Identifier>().unwrap();
+
+        assert_eq!(exp_ident.token.t, TokenType::IDENT);
+        assert_eq!(exp_ident.get_token_literal(), "name");
+
+        assert!(parser.errors.is_empty());
+        assert_eq!(program.statements.len(), 1);
     }
 }

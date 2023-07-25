@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use crate::{
     ast::{expressions::identifier::Identifier, statements::declare_statements::DeclareStatement},
     lexer::Lexer,
@@ -125,7 +123,9 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{lexer::Lexer, parser::Parser, program::Program, ast::statements::declare_statements::DeclareStatement};
+    use crate::{
+        ast::statements::declare_statements::DeclareStatement, lexer::Lexer, parser::Parser,
+    };
 
     #[test]
     fn test_declare_statements() {
@@ -152,7 +152,6 @@ mod tests {
             .enumerate()
             .for_each(|(i, identifier)| {
                 if let Some(stmt) = program.statements.get(i) {
-
                     match stmt.as_any().downcast_ref::<DeclareStatement>() {
                         Some(declare_stmt) => {
                             assert_eq!(identifier.to_owned(), declare_stmt.name.value);

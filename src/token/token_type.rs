@@ -12,7 +12,7 @@ pub enum TokenType {
     COLON,        // :
     COMMA,        // ,
     COMMENT,      // //
-    COMMENTBLOCK,  // /*
+    COMMENTBLOCK, // /*
     DECR,         // --
     DOLLAR,       // $
     DOT,          // .

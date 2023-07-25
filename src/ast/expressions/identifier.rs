@@ -15,12 +15,11 @@ impl Identifier {
     }
 
     pub fn from_token(token: &Token) -> Self {
-
         let value = token.literal.to_owned();
 
         Self {
             token: token.clone(),
-            value
+            value,
         }
     }
 }

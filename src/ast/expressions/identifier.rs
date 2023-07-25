@@ -42,6 +42,6 @@ impl Node for Identifier {
 
 impl ToString for Identifier {
     fn to_string(&self) -> String {
-        self.token.literal.to_string()
+        self.value.to_string()
     }
 }

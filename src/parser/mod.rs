@@ -45,7 +45,7 @@ impl<'a> Parser<'a> {
         self.current_token.t == t
     }
 
-    fn parse(&mut self) -> Result<Program> {
+    pub fn parse(&mut self) -> Result<Program> {
         let mut new_program = Program::new();
 
         loop {

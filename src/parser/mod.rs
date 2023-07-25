@@ -18,6 +18,7 @@ pub struct Parser<'a> {
     lexer: &'a mut Lexer,
     current_token: Token,
     next_token: Token,
+    errors: Vec<String>,
 }
 
 impl<'a> Parser<'a> {
@@ -29,6 +30,7 @@ impl<'a> Parser<'a> {
             lexer,
             current_token,
             next_token,
+            errors: Vec::new(),
         }
     }
 
@@ -45,12 +47,49 @@ impl<'a> Parser<'a> {
         self.current_token.t == t
     }
 
+    fn unexpected_error(&mut self, expected: &str, got: Token) {
+        self.errors.push(format!(
+            "Expected token to be {}, got {} instead at {}:{}",
+            expected, got.t, got.line, got.position
+        ))
+    }
+
+    fn expect_token(&mut self, t: TokenType) -> bool {
+        if self.current_token_is(t.clone()) {
+            self.next_token();
+            true
+        } else {
+            self.errors.push(format!(
+                "Expected token to be {}, got {} instead at {}:{}",
+                t, self.current_token.t, self.current_token.line, self.current_token.position
+            ));
+            false
+        }
+    }
+
+    fn expect_next_token(&mut self, t: TokenType) -> bool {
+        if self.next_token_is(t.clone()) {
+            self.next_token();
+            true
+        } else {
+            self.errors.push(format!(
+                "Expected token to be {}, got {} instead at {}:{}",
+                t, self.next_token.t, self.next_token.line, self.next_token.position
+            ));
+            false
+        }
+    }
+
     pub fn parse(&mut self) -> Result<Program> {
         let mut new_program = Program::new();
 
         loop {
             match self.current_token.t {
                 TokenType::EOF | TokenType::ILLEGAL => break,
+                TokenType::SEMICOLON => {
+                    self.next_token();
+                    continue
+                },
                 _ => {
                     match self.parse_statement() {
                         Ok(stmt) => {
@@ -83,7 +122,11 @@ impl<'a> Parser<'a> {
         loop {
             if self.current_token_is(TokenType::SEMICOLON) {
                 break;
+            } else if self.current_token_is(TokenType::EOF) {
+                self.unexpected_error("EXPR | SEMICOLON", self.current_token.clone());
+                break;
             }
+
             self.next_token();
         }
 
@@ -95,25 +138,36 @@ impl<'a> Parser<'a> {
     fn parse_declare_statement(&mut self) -> Result<Box<dyn Statement>> {
         let current_token = &self.current_token.clone();
 
-        if !self.next_token_is(TokenType::IDENT) {
+        if !self.expect_next_token(TokenType::IDENT) {
             return Err(format!(
-                "Parsing Error: Expected token {} got {}",
+                "Parsing Error: Expected token {} got {} at {}:{}",
                 TokenType::IDENT,
-                self.next_token.t
+                self.next_token.t,
+                self.next_token.line,
+                self.next_token.position,
             )
             .into());
         }
-
-        self.next_token();
 
         let identifier = Identifier::from_token(&self.current_token);
         let type_specifier = self.parse_type_specifier();
 
         if self.next_token_is(TokenType::ASSIGN) {
             self.next_token();
+        } else if !self.next_token_is(TokenType::SEMICOLON) {
+            self.expect_next_token(TokenType::ASSIGN);
         }
 
         loop {
+            if self.current_token_is(TokenType::EOF) {
+                self.errors.push(format!(
+                    "Expected next token to be {}, got EOF instead at {}:{}",
+                    TokenType::SEMICOLON,
+                    current_token.line,
+                    current_token.position
+                ));
+                break;
+            }
             if self.current_token_is(TokenType::SEMICOLON) {
                 break;
             }
@@ -128,8 +182,7 @@ impl<'a> Parser<'a> {
     fn parse_type_specifier(&mut self) -> Option<String> {
         if self.next_token_is(TokenType::COLON) {
             self.next_token();
-            if self.next_token_is(TokenType::IDENT) {
-                self.next_token();
+            if self.expect_next_token(TokenType::IDENT) {
                 Some(self.current_token.clone().literal)
             } else {
                 None
@@ -151,7 +204,7 @@ mod tests {
         const CODE: &'static str = r#"
             let x = 0;
             let y;
-            const NUMBER_OF_ROWS: i32 = 100;
+            const NUMBER_OF_ROWS: i32 = 100;;;
             var notifier = null;
             let first_name: string = "Abdoulaye Dia";
         "#;
@@ -160,6 +213,8 @@ mod tests {
         let mut parser = Parser::new(&mut lexer);
 
         let program = parser.parse().unwrap();
+
+        println!("{:?}", parser.errors);
 
         assert_eq!(program.statements.len(), 5);
 

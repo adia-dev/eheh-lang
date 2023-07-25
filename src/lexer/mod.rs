@@ -344,13 +344,7 @@ mod tests {
     };
 
     #[test]
-    fn ping() {
-        println!("pong !");
-        assert!(true)
-    }
-
-    #[test]
-    fn test_next_token() {
+    fn test_scan() {
         const CODE: &'static str = "=+(){}[],:;";
 
         let mut expected_tokens: Vec<(TokenType, String)> = Vec::new();
@@ -386,7 +380,7 @@ mod tests {
     }
 
     #[test]
-    fn test_next_token_with_code() {
+    fn test_scan_with_code() {
         const CODE: &'static str = r#"
         let five = 5;
         const ten = 10;
@@ -781,7 +775,7 @@ mod tests {
         for (t, literal) in expected_tokens {
             let token = lexer.scan();
 
-            println!("{:?}", token);
+            // println!("{:?}", token);
 
             assert_eq!(
                 token.t, t,

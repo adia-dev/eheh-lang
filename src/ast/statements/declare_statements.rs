@@ -1,13 +1,15 @@
+use std::any::Any;
+
 use crate::{
-    ast::expressions::identifier_expression::IdentifierExpression,
+    ast::expressions::identifier::Identifier,
     token::Token,
-    traits::{expression::Expression, node::Node},
+    traits::{expression::Expression, node::Node, statement::Statement},
 };
 
 #[derive(Debug)]
 pub struct DeclareStatement {
     pub token: Token,
-    pub name: IdentifierExpression,
+    pub name: Identifier,
     pub type_specifier: Option<String>,
     pub value: Option<Box<dyn Expression>>,
 }
@@ -15,7 +17,7 @@ pub struct DeclareStatement {
 impl DeclareStatement {
     pub fn new(
         token: Token,
-        name: IdentifierExpression,
+        name: Identifier,
         type_specifier: Option<String>,
         value: Option<Box<dyn Expression>>,
     ) -> Self {
@@ -32,10 +34,33 @@ impl Node for DeclareStatement {
     fn get_token_literal(&self) -> String {
         self.token.literal.to_string()
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+impl Statement for DeclareStatement {
+    fn process(&self) {}
 }
 
 impl ToString for DeclareStatement {
     fn to_string(&self) -> String {
-        self.token.literal.to_string()
+        if let Some(type_specifier) = &self.type_specifier {
+            format!(
+                "{} {}: {} = {};",
+                self.token.literal,
+                self.name.get_token_literal(),
+                type_specifier,
+                "(not implemented yet !)"
+            )
+        } else {
+            format!(
+                "{} {} = {};",
+                self.token.literal,
+                self.name.get_token_literal(),
+                "(not implemented yet !)"
+            )
+        }
     }
 }

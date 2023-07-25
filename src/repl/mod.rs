@@ -50,8 +50,6 @@ impl REPL {
                 }
             }
         }
-
-        println!("eheh")
     }
 
     fn read(&mut self) -> io::Result<()> {

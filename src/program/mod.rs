@@ -21,6 +21,10 @@ impl Node for Program {
             self.statements[0].get_token_literal()
         }
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 impl ToString for Program {

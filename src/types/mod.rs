@@ -1,4 +1,7 @@
-use crate::{traits::{statement::Statement, expression::Expression}, parser::Parser};
+use crate::{
+    parser::Parser,
+    traits::{expression::Expression, statement::Statement},
+};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub type StatementResponse = Result<Box<dyn Statement>>;

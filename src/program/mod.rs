@@ -62,24 +62,19 @@ mod tests {
 
         assert_eq!(program.statements.len(), 6);
 
+        let expected_strings: Vec<&str> = vec![
+            "let x = (not implemented yet !);",
+            "let y = (not implemented yet !);",
+            "const NUMBER_OF_ROWS: i32 = (not implemented yet !);",
+            "var notifier = (not implemented yet !);",
+            "let first_name: string = (not implemented yet !);",
+            "return None;",
+        ];
 
-        let expected_strings: Vec<&str> =
-            vec![
-                "let x = (not implemented yet !);",
-                "let y = (not implemented yet !);",
-                "const NUMBER_OF_ROWS: i32 = (not implemented yet !);",
-                "var notifier = (not implemented yet !);",
-                "let first_name: string = (not implemented yet !);",
-                "return None;",
-            ];
-
-        expected_strings
-            .iter()
-            .enumerate()
-            .for_each(|(i, s)| {
-                if let Some(stmt) = program.statements.get(i) {
-                    assert_eq!(stmt.to_string(), s.to_string());
-                }
-            });
+        expected_strings.iter().enumerate().for_each(|(i, s)| {
+            if let Some(stmt) = program.statements.get(i) {
+                assert_eq!(stmt.to_string(), s.to_string());
+            }
+        });
     }
 }

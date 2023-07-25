@@ -182,7 +182,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expression(&mut self, precedence: Precedence) -> ExpressionResponse {
+    fn parse_expression(&mut self, _precedence: Precedence) -> ExpressionResponse {
         if let Some(prefix_fn) = self.prefix_fns.get(&self.current_token.t) {
             let left_exp = prefix_fn(self);
 
@@ -271,7 +271,7 @@ mod tests {
         lexer::Lexer,
         parser::Parser,
         token::token_type::TokenType,
-        traits::{expression::Expression, node::Node},
+        traits::node::Node,
     };
 
     #[test]

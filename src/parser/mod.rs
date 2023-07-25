@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{
-        expressions::identifier::Identifier,
+        expressions::{identifier::Identifier, integer_literal::IntegerLiteral},
         precedence::Precedence,
         statements::{
             declare_statements::DeclareStatement, expression_statements::ExpressionStatement,
@@ -52,6 +52,8 @@ impl<'a> Parser<'a> {
     fn register_prefix_fns(&mut self) {
         self.prefix_fns
             .insert(TokenType::IDENT, Self::parse_identifier);
+        self.prefix_fns
+            .insert(TokenType::INT, Self::parse_integer_literal);
     }
 
     fn register_infix_fns(&mut self) {}
@@ -140,6 +142,10 @@ impl<'a> Parser<'a> {
 
     fn parse_identifier(&mut self) -> ExpressionResponse {
         Ok(Box::new(Identifier::from_token(&self.current_token)))
+    }
+
+    fn parse_integer_literal(&mut self) -> ExpressionResponse {
+        Ok(Box::new(IntegerLiteral::from_token(&self.current_token)))
     }
 
     fn parse_return_statement(&mut self) -> StatementResponse {
@@ -256,7 +262,16 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{statements::{declare_statements::DeclareStatement, expression_statements::ExpressionStatement}, expressions::identifier::Identifier}, lexer::Lexer, parser::Parser, token::token_type::TokenType, traits::node::Node,
+        ast::{
+            expressions::{identifier::Identifier, integer_literal::IntegerLiteral},
+            statements::{
+                declare_statements::DeclareStatement, expression_statements::ExpressionStatement,
+            },
+        },
+        lexer::Lexer,
+        parser::Parser,
+        token::token_type::TokenType,
+        traits::{expression::Expression, node::Node},
     };
 
     #[test]
@@ -314,7 +329,7 @@ mod tests {
     }
 
     #[test]
-    fn test_expression_statement() {
+    fn test_expression_statement_with_identifier() {
         const CODE: &'static str = r#"
             name;
         "#;
@@ -324,11 +339,48 @@ mod tests {
 
         let program = parser.parse().unwrap();
 
-        let exp_stmt = program.statements[0].as_any().downcast_ref::<ExpressionStatement>().unwrap();
-        let exp_ident = exp_stmt.expression.as_any().downcast_ref::<Identifier>().unwrap();
+        let exp_stmt = program.statements[0]
+            .as_any()
+            .downcast_ref::<ExpressionStatement>()
+            .unwrap();
+        let exp_ident = exp_stmt
+            .expression
+            .as_any()
+            .downcast_ref::<Identifier>()
+            .unwrap();
 
         assert_eq!(exp_ident.token.t, TokenType::IDENT);
         assert_eq!(exp_ident.get_token_literal(), "name");
+
+        assert!(parser.errors.is_empty());
+        assert_eq!(program.statements.len(), 1);
+    }
+
+    #[test]
+    fn test_expression_statement_with_integer_literal() {
+        const CODE: &'static str = r#"
+            5;
+        "#;
+
+        let mut lexer = Lexer::new(CODE);
+        let mut parser = Parser::new(&mut lexer);
+
+        let program = parser.parse().unwrap();
+
+        let exp_stmt = program.statements[0]
+            .as_any()
+            .downcast_ref::<ExpressionStatement>()
+            .unwrap();
+
+        let exp_int = exp_stmt
+            .expression
+            .as_any()
+            .downcast_ref::<IntegerLiteral>()
+            .unwrap();
+
+        assert_eq!(exp_int.token.t, TokenType::INT);
+        assert_eq!(exp_int.get_token_literal(), "5");
+        assert_eq!(exp_int.value, 5);
 
         assert!(parser.errors.is_empty());
         assert_eq!(program.statements.len(), 1);

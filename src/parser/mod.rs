@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{
-        expressions::{identifier::Identifier, integer_literal::IntegerLiteral},
+        expressions::{
+            identifier::Identifier, integer_literal::IntegerLiteral,
+            prefix_expression::PrefixExpression,
+        },
         precedence::Precedence,
         statements::{
             declare_statements::DeclareStatement, expression_statements::ExpressionStatement,
@@ -54,6 +57,16 @@ impl<'a> Parser<'a> {
             .insert(TokenType::IDENT, Self::parse_identifier);
         self.prefix_fns
             .insert(TokenType::INT, Self::parse_integer_literal);
+        self.prefix_fns
+            .insert(TokenType::BANG, Self::parse_prefix_expression);
+        self.prefix_fns
+            .insert(TokenType::MINUS, Self::parse_prefix_expression);
+        self.prefix_fns
+            .insert(TokenType::RANGE, Self::parse_prefix_expression);
+        self.prefix_fns
+            .insert(TokenType::INCR, Self::parse_prefix_expression);
+        self.prefix_fns
+            .insert(TokenType::DECR, Self::parse_prefix_expression);
     }
 
     fn register_infix_fns(&mut self) {}
@@ -146,6 +159,20 @@ impl<'a> Parser<'a> {
 
     fn parse_integer_literal(&mut self) -> ExpressionResponse {
         Ok(Box::new(IntegerLiteral::from_token(&self.current_token)))
+    }
+
+    // double cloning eww :/
+    fn parse_prefix_expression(&mut self) -> ExpressionResponse {
+        let current_token = self.current_token.clone();
+        self.next_token();
+
+        let rhs = self.parse_expression(Precedence::PREFIX)?;
+
+        Ok(Box::new(PrefixExpression::new(
+            current_token.clone(),
+            current_token.literal,
+            rhs,
+        )))
     }
 
     fn parse_return_statement(&mut self) -> StatementResponse {
@@ -263,13 +290,17 @@ impl<'a> Parser<'a> {
 mod tests {
     use crate::{
         ast::{
-            expressions::{identifier::Identifier, integer_literal::IntegerLiteral},
+            expressions::{
+                identifier::Identifier, integer_literal::IntegerLiteral,
+                prefix_expression::PrefixExpression,
+            },
             statements::{
                 declare_statements::DeclareStatement, expression_statements::ExpressionStatement,
             },
         },
         lexer::Lexer,
         parser::Parser,
+        program::Program,
         token::token_type::TokenType,
         traits::node::Node,
     };
@@ -384,5 +415,39 @@ mod tests {
 
         assert!(parser.errors.is_empty());
         assert_eq!(program.statements.len(), 1);
+    }
+
+    #[test]
+    fn test_parsing_prefix_expressions() {
+        let mut prefix_inputs: Vec<(&str, &str, &str)> = Vec::new();
+        prefix_inputs.push(("!5", "!", "5"));
+        prefix_inputs.push(("-5", "-", "5"));
+        prefix_inputs.push(("++i", "++", "i"));
+        prefix_inputs.push(("..10", "..", "10"));
+
+        for &(input, operator, value) in &prefix_inputs {
+            let mut lexer = Lexer::new(input);
+            let mut parser = Parser::new(&mut lexer);
+            let program = parser.parse().unwrap();
+
+            assert_eq!(program.statements.len(), 1);
+            assert_eq!(parser.errors.len(), 0);
+
+            if let Some(stmt) = program.statements[0]
+                .as_any()
+                .downcast_ref::<ExpressionStatement>()
+            {
+                let prefix_exp = stmt
+                    .expression
+                    .as_any()
+                    .downcast_ref::<PrefixExpression>()
+                    .unwrap();
+
+                assert_eq!(operator, prefix_exp.operator);
+                assert_eq!(value, prefix_exp.rhs.to_string());
+            } else {
+                panic!("Could not perform the downcast into an Expression Statement")
+            }
+        }
     }
 }

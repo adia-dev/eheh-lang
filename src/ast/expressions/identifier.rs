@@ -26,7 +26,7 @@ impl Identifier {
 
 impl Expression for Identifier {
     fn eval(&self) -> String {
-        todo!()
+        self.get_token_literal()
     }
 }
 

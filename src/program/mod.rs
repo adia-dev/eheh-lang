@@ -33,7 +33,6 @@ impl ToString for Program {
 
         for statement in &self.statements {
             s.push_str(statement.to_string().as_str());
-            s.push('\n');
         }
 
         s

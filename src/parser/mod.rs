@@ -29,6 +29,9 @@ pub struct Parser<'a> {
     errors: Vec<String>,
     prefix_fns: HashMap<TokenType, PrefixParseFn<'a>>,
     infix_fns: HashMap<TokenType, InfixParseFn<'a>>,
+    dbg_indent: usize,
+    dbg_context: String,
+    dbg_tracing_enabled: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -45,6 +48,9 @@ impl<'a> Parser<'a> {
             errors: Vec::new(),
             prefix_fns,
             infix_fns,
+            dbg_indent: 0,
+            dbg_context: String::new(),
+            dbg_tracing_enabled: false, // TODO: toggle this state based on a env variable
         };
 
         parser.register_prefix_fns();
@@ -66,7 +72,6 @@ impl<'a> Parser<'a> {
             TokenType::MINUS,
             TokenType::RANGE,
             TokenType::IRANGE,
-
         ];
 
         for t in &prefix_tokens {
@@ -168,9 +173,13 @@ impl<'a> Parser<'a> {
                     continue;
                 }
                 _ => {
+                    self.dbg_trace(
+                        format!("parse_statement {}", new_program.statements.len() + 1).as_str(),
+                    );
                     match self.parse_statement() {
                         Ok(stmt) => {
                             new_program.statements.push(stmt);
+                            self.dbg_untrace();
                         }
                         Err(_err) => (),
                     }
@@ -230,6 +239,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_return_statement(&mut self) -> StatementResponse {
+        self.dbg_trace("parse_return_statement");
         let current_token = &self.current_token.clone();
 
         loop {
@@ -245,10 +255,12 @@ impl<'a> Parser<'a> {
 
         let stmt = ReturnStatement::new(current_token.clone(), None);
 
+        self.dbg_untrace();
         Ok(Box::new(stmt))
     }
 
     fn parse_expression_statement(&mut self) -> StatementResponse {
+        self.dbg_trace("parse_expression_statement");
         match self.parse_expression(Precedence::LOWEST) {
             Ok(expression) => {
                 let stmt = ExpressionStatement::new(self.current_token.clone(), expression);
@@ -257,6 +269,7 @@ impl<'a> Parser<'a> {
                     self.next_token();
                 }
 
+                self.dbg_untrace();
                 Ok(Box::new(stmt))
             }
             Err(err) => Err(err),
@@ -264,6 +277,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> ExpressionResponse {
+        self.dbg_trace("parse_expression");
         if let Some(prefix_fn) = self.prefix_fns.get(&self.current_token.t) {
             let mut left_exp = prefix_fn(self)?;
 
@@ -289,6 +303,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
+            self.dbg_untrace();
             Ok(left_exp)
         } else {
             self.errors.push(format!(
@@ -306,6 +321,13 @@ impl<'a> Parser<'a> {
 
     fn parse_declare_statement(&mut self) -> StatementResponse {
         let current_token = &self.current_token.clone();
+        self.dbg_trace(
+            format!(
+                "parse_{}_statement",
+                self.current_token.literal.clone().to_lowercase()
+            )
+            .as_str(),
+        );
 
         if !self.expect_next_token(TokenType::IDENT) {
             return Err(format!(
@@ -345,6 +367,7 @@ impl<'a> Parser<'a> {
 
         let stmt = DeclareStatement::new(current_token.clone(), identifier, type_specifier, None);
 
+        self.dbg_untrace();
         Ok(Box::new(stmt))
     }
 
@@ -359,6 +382,27 @@ impl<'a> Parser<'a> {
         } else {
             None
         }
+    }
+
+    fn dbg_trace(&mut self, context: &str) {
+        if !self.dbg_tracing_enabled {
+            return;
+        }
+        let padding = "    ".repeat(self.dbg_indent);
+        self.dbg_context = context.to_string();
+        println!("{}BEGIN {}", padding, self.dbg_context);
+        self.dbg_indent += 1;
+    }
+
+    fn dbg_untrace(&mut self) {
+        if !self.dbg_tracing_enabled {
+            return;
+        }
+        if self.dbg_indent > 0 {
+            self.dbg_indent -= 1;
+        }
+        let padding = "    ".repeat(self.dbg_indent);
+        println!("{}END {}", padding, self.dbg_context);
     }
 }
 
@@ -590,8 +634,14 @@ mod tests {
         infix_inputs.push(("3 + 4; -5 * 5", "(3 + 4)((-5) * 5)"));
         infix_inputs.push(("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"));
         infix_inputs.push(("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"));
-        infix_inputs.push(("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"));
-        infix_inputs.push(("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"));
+        infix_inputs.push((
+            "3 + 4 * 5 == 3 * 1 + 4 * 5",
+            "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+        ));
+        infix_inputs.push((
+            "3 + 4 * 5 == 3 * 1 + 4 * 5",
+            "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+        ));
 
         for &(input, expected) in &infix_inputs {
             let mut lexer = Lexer::new(input);

@@ -58,16 +58,21 @@ impl<'a> Parser<'a> {
             .insert(TokenType::IDENT, Self::parse_identifier);
         self.prefix_fns
             .insert(TokenType::INT, Self::parse_integer_literal);
-        self.prefix_fns
-            .insert(TokenType::BANG, Self::parse_prefix_expression);
-        self.prefix_fns
-            .insert(TokenType::MINUS, Self::parse_prefix_expression);
-        self.prefix_fns
-            .insert(TokenType::RANGE, Self::parse_prefix_expression);
-        self.prefix_fns
-            .insert(TokenType::INCR, Self::parse_prefix_expression);
-        self.prefix_fns
-            .insert(TokenType::DECR, Self::parse_prefix_expression);
+
+        let prefix_tokens: Vec<TokenType> = vec![
+            TokenType::INCR,
+            TokenType::DECR,
+            TokenType::BANG,
+            TokenType::MINUS,
+            TokenType::RANGE,
+            TokenType::IRANGE,
+
+        ];
+
+        for t in &prefix_tokens {
+            self.prefix_fns
+                .insert(t.clone(), Self::parse_prefix_expression);
+        }
     }
 
     fn register_infix_fns(&mut self) {

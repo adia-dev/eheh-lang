@@ -19,7 +19,7 @@ use crate::{
         Token,
     },
     traits::expression::Expression,
-    types::{ExpressionResponse, InfixParseFn, PrefixParseFn, Result, StatementResponse},
+    types::{ExpressionResult, InfixParseFn, PrefixParseFn, Result, StatementResult},
 };
 
 pub struct Parser<'a> {
@@ -192,7 +192,7 @@ impl<'a> Parser<'a> {
         Ok(new_program)
     }
 
-    fn parse_statement(&mut self) -> StatementResponse {
+    fn parse_statement(&mut self) -> StatementResult {
         match self.current_token.t {
             TokenType::KEYWORD(KeywordTokenType::LET)
             | TokenType::KEYWORD(KeywordTokenType::CONST)
@@ -202,16 +202,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_identifier(&mut self) -> ExpressionResponse {
+    fn parse_identifier(&mut self) -> ExpressionResult {
         Ok(Box::new(Identifier::from_token(&self.current_token)))
     }
 
-    fn parse_integer_literal(&mut self) -> ExpressionResponse {
+    fn parse_integer_literal(&mut self) -> ExpressionResult {
         Ok(Box::new(IntegerLiteral::from_token(&self.current_token)))
     }
 
     // double cloning eww :/
-    fn parse_prefix_expression(&mut self) -> ExpressionResponse {
+    fn parse_prefix_expression(&mut self) -> ExpressionResult {
         let current_token = self.current_token.clone();
         self.next_token();
 
@@ -224,7 +224,7 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    fn parse_infix_expression(&mut self, lhs: Box<dyn Expression>) -> ExpressionResponse {
+    fn parse_infix_expression(&mut self, lhs: Box<dyn Expression>) -> ExpressionResult {
         let precedence = self.current_precedence();
         let current_token = self.current_token.clone();
         self.next_token();
@@ -238,7 +238,7 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    fn parse_return_statement(&mut self) -> StatementResponse {
+    fn parse_return_statement(&mut self) -> StatementResult {
         self.dbg_trace("parse_return_statement");
         let current_token = &self.current_token.clone();
 
@@ -259,7 +259,7 @@ impl<'a> Parser<'a> {
         Ok(Box::new(stmt))
     }
 
-    fn parse_expression_statement(&mut self) -> StatementResponse {
+    fn parse_expression_statement(&mut self) -> StatementResult {
         self.dbg_trace("parse_expression_statement");
         match self.parse_expression(Precedence::LOWEST) {
             Ok(expression) => {
@@ -276,7 +276,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expression(&mut self, precedence: Precedence) -> ExpressionResponse {
+    fn parse_expression(&mut self, precedence: Precedence) -> ExpressionResult {
         self.dbg_trace("parse_expression");
         if let Some(prefix_fn) = self.prefix_fns.get(&self.current_token.t) {
             let mut left_exp = prefix_fn(self)?;
@@ -319,7 +319,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_declare_statement(&mut self) -> StatementResponse {
+    fn parse_declare_statement(&mut self) -> StatementResult {
         let current_token = &self.current_token.clone();
         self.dbg_trace(
             format!(

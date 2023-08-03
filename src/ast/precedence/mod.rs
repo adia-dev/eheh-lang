@@ -18,9 +18,11 @@ impl Precedence {
         match t {
             TokenType::EQ | TokenType::NEQ => Precedence::EQ,
             TokenType::LT | TokenType::GT | TokenType::LTE | TokenType::GTE => Precedence::LGT,
-            TokenType::LSHIFT | TokenType::RSHIFT  => Precedence::BITWISE,
+            TokenType::LSHIFT | TokenType::RSHIFT => Precedence::BITWISE,
             TokenType::PLUS | TokenType::MINUS => Precedence::SUM,
-            TokenType::ASTERISK | TokenType::FORWARDSLASH | TokenType::PERCENT => Precedence::PRODUCT,
+            TokenType::ASTERISK | TokenType::FORWARDSLASH | TokenType::PERCENT => {
+                Precedence::PRODUCT
+            }
             TokenType::EXPONENT => Precedence::EXPONENT,
             TokenType::INCR | TokenType::DECR | TokenType::BANG => Precedence::PREFIX,
             _ => Precedence::LOWEST,

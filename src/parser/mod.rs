@@ -420,7 +420,6 @@ mod tests {
         },
         lexer::Lexer,
         parser::Parser,
-        program::Program,
         token::token_type::TokenType,
         traits::node::Node,
     };

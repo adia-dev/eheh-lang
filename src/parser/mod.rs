@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::{
     ast::{
         expressions::{
-            identifier::Identifier, infix_expression::InfixExpression,
-            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression, boolean::Boolean,
+            boolean::Boolean, identifier::Identifier, infix_expression::InfixExpression,
+            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
         },
         precedence::Precedence,
         statements::{
@@ -71,6 +71,9 @@ impl<'a> Parser<'a> {
             TokenType::KEYWORD(KeywordTokenType::FALSE),
             Self::parse_boolean,
         );
+
+        self.prefix_fns
+            .insert(TokenType::LPAREN, Self::parse_grouped_expression);
 
         self.prefix_fns
             .insert(TokenType::INT, Self::parse_integer_literal);
@@ -213,23 +216,31 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_identifier(&mut self) -> ExpressionResult {
+        self.dbg_trace_inline("parse_identifier");
         Ok(Box::new(Identifier::from_token(&self.current_token)))
     }
 
     fn parse_boolean(&mut self) -> ExpressionResult {
+        self.dbg_trace_inline("parse_boolean");
         Ok(Box::new(Boolean::from_token(&self.current_token)))
     }
 
     fn parse_integer_literal(&mut self) -> ExpressionResult {
+        self.dbg_trace_inline(
+            format!("parse_integer_literal: {}", self.current_token.literal).as_str(),
+        );
         Ok(Box::new(IntegerLiteral::from_token(&self.current_token)))
     }
 
     // double cloning eww :/
     fn parse_prefix_expression(&mut self) -> ExpressionResult {
+        self.dbg_trace(format!("parse_prefix_expression: {}", self.current_token.t).as_str());
+
         let current_token = self.current_token.clone();
         self.next_token();
-
         let rhs = self.parse_expression(Precedence::PREFIX)?;
+
+        self.dbg_untrace();
 
         Ok(Box::new(PrefixExpression::new(
             current_token.clone(),
@@ -239,10 +250,14 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_infix_expression(&mut self, lhs: Box<dyn Expression>) -> ExpressionResult {
+        self.dbg_trace(format!("parse_infix_expression: {}", self.current_token.t).as_str());
+
         let precedence = self.current_precedence();
         let current_token = self.current_token.clone();
         self.next_token();
         let rhs = self.parse_expression(precedence)?;
+
+        self.dbg_untrace();
 
         Ok(Box::new(InfixExpression::new(
             current_token.clone(),
@@ -333,6 +348,30 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_grouped_expression(&mut self) -> ExpressionResult {
+        self.dbg_trace("parse_grouped_expression");
+        self.next_token();
+
+        let exp = self.parse_expression(Precedence::LOWEST);
+
+        if !self.next_token_is(TokenType::RPAREN) {
+            self.errors.push(format!(
+                "Parsing Error: Could not parse a grouped expression, expected token RPAREN, got {}",
+                self.current_token.t
+            ));
+
+            return Err(format!(
+                "Parsing Error: Could not parse a grouped expression, expected token RPAREN, got {}",
+                self.current_token.t
+            )
+            .into());
+        }
+
+        self.next_token();
+        self.dbg_untrace();
+        exp
+    }
+
     fn parse_declare_statement(&mut self) -> StatementResult {
         let current_token = &self.current_token.clone();
         self.dbg_trace(
@@ -406,6 +445,14 @@ impl<'a> Parser<'a> {
         self.dbg_context = context.to_string();
         println!("{}BEGIN {}", padding, self.dbg_context);
         self.dbg_indent += 1;
+    }
+
+    fn dbg_trace_inline(&mut self, context: &str) {
+        if !self.dbg_tracing_enabled {
+            return;
+        }
+        let padding = "    ".repeat(self.dbg_indent);
+        println!("{}ACTION {}", padding, context);
     }
 
     fn dbg_untrace(&mut self) {

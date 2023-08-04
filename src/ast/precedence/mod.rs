@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::token::token_type::TokenType;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -29,3 +31,10 @@ impl Precedence {
         }
     }
 }
+
+impl Display for Precedence {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+

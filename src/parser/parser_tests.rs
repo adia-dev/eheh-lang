@@ -164,6 +164,8 @@ pub mod tests {
         let mut prefix_inputs: Vec<(&str, &str, &str)> = Vec::new();
         prefix_inputs.push(("!5", "!", "5"));
         prefix_inputs.push(("-5", "-", "5"));
+        prefix_inputs.push(("!false", "!", "false"));
+        prefix_inputs.push(("!true", "!", "true"));
         prefix_inputs.push(("++i", "++", "i"));
         prefix_inputs.push(("..10", "..", "10"));
 
@@ -218,6 +220,8 @@ pub mod tests {
         infix_inputs.push(("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"));
         infix_inputs.push(("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"));
         infix_inputs.push(("a * b - t", "((a * b) - t)"));
+        infix_inputs.push(("true == false", "(true == false)"));
+        infix_inputs.push(("true != false", "(true != false)"));
         infix_inputs.push((
             "3 + 4 * 5 == 3 * 1 + 4 * 5",
             "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
@@ -241,6 +245,32 @@ pub mod tests {
         }
     }
 
+        #[test]
+    fn test_operator_precedence() {
+        let mut infix_inputs: Vec<(&str, &str)> = Vec::new();
+        infix_inputs.push(("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"));
+        infix_inputs.push(("(5 + 5) * 10", "((5 + 5) * 10)"));
+        infix_inputs.push(("2 / (5 + 5)", "(2 / (5 + 5))"));
+        infix_inputs.push(("-(5 + 5)", "(-(5 + 5))"));
+        infix_inputs.push(("!(true == true)", "(!(true == true))"));
+
+        for &(input, expected) in &infix_inputs {
+            let mut lexer = Lexer::new(input);
+            let mut parser = Parser::new(&mut lexer);
+            let program = parser.parse().unwrap();
+
+            assert!(parser.errors.is_empty(), "{:?}", parser.errors);
+
+            for stmt in &program.statements {
+                test_downcast_expression_statement_helper(stmt);
+                // downcast_expression_helper::<InfixExpression>(&exp_stmt.expression);
+            }
+
+            assert_eq!(program.to_string(), expected);
+        }
+    }
+
+
     fn test_downcast_expression_statement_helper(
         statement: &Box<dyn Statement>,
     ) -> &ExpressionStatement {
@@ -256,7 +286,7 @@ pub mod tests {
         match exp.as_any().downcast_ref::<T>() {
             Some(t_exp) => t_exp,
             None => {
-                panic!("Failed to downcast an expression")
+                panic!("Failed to downcast an expression: {:?}", exp.get_token_literal())
             }
         }
     }

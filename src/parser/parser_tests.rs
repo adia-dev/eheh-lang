@@ -2,7 +2,7 @@ pub mod tests {
     use crate::{
         ast::{
             expressions::{
-                identifier::Identifier, infix_expression::InfixExpression,
+                boolean::Boolean, identifier::Identifier, infix_expression::InfixExpression,
                 integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
             },
             statements::{
@@ -54,6 +54,52 @@ pub mod tests {
                     assert_eq!(identifier.1.to_owned(), declare_stmt.name.value);
                 }
             });
+    }
+
+    #[test]
+    fn test_identifier_expression() {
+        const CODE: &'static str = r#"
+            foobar;
+            parser;
+            lexer;
+            program;
+        "#;
+
+        let mut lexer = Lexer::new(CODE);
+        let mut parser = Parser::new(&mut lexer);
+
+        let program = parser.parse().unwrap();
+
+        let identifiers: Vec<&str> = vec!["foobar", "parser", "lexer", "program"];
+
+        identifiers.iter().enumerate().for_each(|(i, expected)| {
+            if let Some(stmt) = program.statements.get(i) {
+                let exp_stmt = test_downcast_expression_statement_helper(stmt);
+                test_identifier_helper(&exp_stmt.expression, expected.to_string());
+            }
+        });
+    }
+
+    #[test]
+    fn test_boolean_expression() {
+        const CODE: &'static str = r#"
+            true;
+            false;
+        "#;
+
+        let mut lexer = Lexer::new(CODE);
+        let mut parser = Parser::new(&mut lexer);
+
+        let program = parser.parse().unwrap();
+
+        let booleans: Vec<bool> = vec![true, false];
+
+        booleans.iter().enumerate().for_each(|(i, expected)| {
+            if let Some(stmt) = program.statements.get(i) {
+                let exp_stmt = test_downcast_expression_statement_helper(stmt);
+                test_boolean_helper(&exp_stmt.expression, expected.clone());
+            }
+        });
     }
 
     #[test]
@@ -229,8 +275,7 @@ pub mod tests {
         lhs: i64,
         operator: &str,
         rhs: i64,
-    ) 
-    {
+    ) {
         let infix_exp = downcast_expression_helper::<InfixExpression>(&exp_stmt.expression);
         let lhs_exp = test_integer_literal_helper(&infix_exp.lhs, lhs);
         let rhs_exp = test_integer_literal_helper(&infix_exp.rhs, rhs);
@@ -251,6 +296,13 @@ pub mod tests {
         assert_eq!(ident.value, value);
         assert_eq!(ident.get_token_literal(), value);
         ident
+    }
+
+    fn test_boolean_helper(exp: &Box<dyn Expression>, value: bool) -> &Boolean {
+        let boolean = downcast_expression_helper::<Boolean>(exp);
+        assert_eq!(boolean.value, value);
+        assert_eq!(boolean.get_token_literal(), value.to_string());
+        boolean
     }
 
     fn test_integer_literal_helper(
@@ -278,6 +330,4 @@ pub mod tests {
             }
         }
     }
-
-
 }

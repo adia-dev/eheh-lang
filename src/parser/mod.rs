@@ -4,7 +4,7 @@ use crate::{
     ast::{
         expressions::{
             identifier::Identifier, infix_expression::InfixExpression,
-            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
+            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression, boolean::Boolean,
         },
         precedence::Precedence,
         statements::{
@@ -62,6 +62,16 @@ impl<'a> Parser<'a> {
     fn register_prefix_fns(&mut self) {
         self.prefix_fns
             .insert(TokenType::IDENT, Self::parse_identifier);
+
+        self.prefix_fns.insert(
+            TokenType::KEYWORD(KeywordTokenType::TRUE),
+            Self::parse_boolean,
+        );
+        self.prefix_fns.insert(
+            TokenType::KEYWORD(KeywordTokenType::FALSE),
+            Self::parse_boolean,
+        );
+
         self.prefix_fns
             .insert(TokenType::INT, Self::parse_integer_literal);
 
@@ -204,6 +214,10 @@ impl<'a> Parser<'a> {
 
     fn parse_identifier(&mut self) -> ExpressionResult {
         Ok(Box::new(Identifier::from_token(&self.current_token)))
+    }
+
+    fn parse_boolean(&mut self) -> ExpressionResult {
+        Ok(Box::new(Boolean::from_token(&self.current_token)))
     }
 
     fn parse_integer_literal(&mut self) -> ExpressionResult {

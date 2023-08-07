@@ -424,8 +424,6 @@ mod tests {
         expected_tokens.push((TokenType::KEYWORD(KeywordTokenType::LET), "let".to_owned()));
         expected_tokens.push((TokenType::IDENT, "comment".to_owned()));
         expected_tokens.push((TokenType::ASSIGN, "=".to_owned()));
-        expected_tokens.push((TokenType::COMMENT, "//".to_owned()));
-        expected_tokens.push((TokenType::COMMENTBLOCK, "/*".to_owned()));
         expected_tokens.push((TokenType::SEMICOLON, ";".to_owned()));
         expected_tokens.push((TokenType::KEYWORD(KeywordTokenType::LET), "let".to_owned()));
         expected_tokens.push((TokenType::IDENT, "null_value".to_owned()));

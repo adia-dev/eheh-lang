@@ -3,13 +3,14 @@ use std::collections::HashMap;
 use crate::{
     ast::{
         expressions::{
-            boolean::Boolean, identifier::Identifier, infix_expression::InfixExpression,
-            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
+            boolean::Boolean, identifier::Identifier, if_expression::IfExpression,
+            infix_expression::InfixExpression, integer_literal::IntegerLiteral,
+            prefix_expression::PrefixExpression,
         },
         precedence::Precedence,
         statements::{
-            declare_statements::DeclareStatement, expression_statements::ExpressionStatement,
-            return_statements::ReturnStatement,
+            block_statement::BlockStatement, declare_statements::DeclareStatement,
+            expression_statements::ExpressionStatement, return_statements::ReturnStatement,
         },
     },
     lexer::Lexer,
@@ -18,7 +19,7 @@ use crate::{
         token_type::{KeywordTokenType, TokenType},
         Token,
     },
-    traits::expression::Expression,
+    traits::{expression::Expression, statement::Statement},
     types::{ExpressionResult, InfixParseFn, PrefixParseFn, Result, StatementResult},
 };
 
@@ -27,10 +28,10 @@ pub struct Parser<'a> {
     current_token: Token,
     next_token: Token,
     errors: Vec<String>,
+    warnings: Vec<String>,
     prefix_fns: HashMap<TokenType, PrefixParseFn<'a>>,
     infix_fns: HashMap<TokenType, InfixParseFn<'a>>,
     dbg_indent: usize,
-    dbg_context: String,
     dbg_tracing_enabled: bool,
 }
 
@@ -46,11 +47,11 @@ impl<'a> Parser<'a> {
             current_token,
             next_token,
             errors: Vec::new(),
+            warnings: Vec::new(),
             prefix_fns,
             infix_fns,
             dbg_indent: 0,
-            dbg_context: String::new(),
-            dbg_tracing_enabled: false, // TODO: toggle this state based on a env variable
+            dbg_tracing_enabled: false,
         };
 
         parser.register_prefix_fns();
@@ -77,6 +78,11 @@ impl<'a> Parser<'a> {
 
         self.prefix_fns
             .insert(TokenType::INT, Self::parse_integer_literal);
+
+        self.prefix_fns.insert(
+            TokenType::KEYWORD(KeywordTokenType::IF),
+            Self::parse_if_expression,
+        );
 
         let prefix_tokens: Vec<TokenType> = vec![
             TokenType::INCR,
@@ -192,7 +198,7 @@ impl<'a> Parser<'a> {
                     match self.parse_statement() {
                         Ok(stmt) => {
                             new_program.statements.push(stmt);
-                            self.dbg_untrace();
+                            self.dbg_untrace("parse_statement");
                         }
                         Err(_err) => (),
                     }
@@ -232,6 +238,92 @@ impl<'a> Parser<'a> {
         Ok(Box::new(IntegerLiteral::from_token(&self.current_token)))
     }
 
+    fn parse_if_expression(&mut self) -> ExpressionResult {
+        self.dbg_trace(format!("parse_if_expression: {}", self.current_token.literal).as_str());
+
+        let current_token = self.current_token.clone(); // if
+        let mut surrounded_by_paren = false;
+
+        // optional parentheses around condition
+        if self.next_token_is(TokenType::LPAREN) {
+            self.next_token();
+            self.warn("unnecessary parentheses around `if` condition");
+            surrounded_by_paren = true;
+        }
+
+        if surrounded_by_paren && self.next_token_is(TokenType::RPAREN)
+            || self.next_token_is(TokenType::LBRACE)
+        {
+            self.errors.push("Parsing Error: If expressions need to contain a condition, maybe you forgot it.\nreminder: if (cond) { ... } <optional> else { ... }".to_string());
+
+            return Err("Parsing Error: If expressions need to contain a condition, maybe you forgot it.\nrto_stringeminder: if (cond) { ... } <optional> else { ... }".into());
+        }
+
+        self.next_token(); // first token of the condition expression
+
+        let condition = self.parse_expression(Precedence::LOWEST)?;
+
+        self.next_token();
+
+        if surrounded_by_paren && !self.expect_token(TokenType::RPAREN) {
+            self.errors.push(format!(
+                "Parsing Error: Could not parse an if expression, expected token RPAREN, got {}",
+                self.current_token.t
+            ));
+
+            return Err(format!(
+                "Parsing Error: Could not parse an if expression, expected token RPAREN, got {}",
+                self.current_token.t
+            )
+            .into());
+        }
+
+        if !self.current_token_is(TokenType::LBRACE) {
+            self.errors.push(format!(
+                "Parsing Error: Could not parse an if expression, expected token LBRACE, got {}",
+                self.current_token.t
+            ));
+
+            return Err(format!(
+                "Parsing Error: Could not parse an if expression, expected token LBRACE, got {}",
+                self.current_token.t
+            )
+            .into());
+        }
+
+        let consequence = self.parse_block_statement()?;
+        let mut alternative: Option<BlockStatement> = None;
+
+        if self.next_token_is(TokenType::KEYWORD(KeywordTokenType::ELSE)) {
+            self.next_token();
+            self.next_token();
+            alternative = Some(self.parse_block_statement()?);
+        }
+
+        if let Some(alt) = &alternative {
+            if alt.statements.is_empty() && consequence.statements.is_empty() {
+                self.warn("the consequence and the alternative(s) of the if expression are empty, you might want to if expression remove it.");
+            } else if consequence.statements.is_empty() {
+                self.warn("the consequence of the if statement is empty, you might want to invert the condition and remove the alternative statement like so:\n if !(cond) {{ ... }}");
+            } else if alt.statements.is_empty() {
+                self.warn("the alternative of the if statement is empty, you might want to remove the alternative statement like so:\n if (cond) {{ ... }}");
+            }
+        } else if consequence.statements.is_empty() {
+            self.warn(
+                "the consequence of the if expression is empty, you might want to remove it.",
+            );
+        }
+
+        self.dbg_untrace("parse_if_expression");
+
+        Ok(Box::new(IfExpression::new(
+            current_token.clone(),
+            condition,
+            consequence,
+            alternative,
+        )))
+    }
+
     // double cloning eww :/
     fn parse_prefix_expression(&mut self) -> ExpressionResult {
         self.dbg_trace(format!("parse_prefix_expression: {}", self.current_token.t).as_str());
@@ -240,7 +332,7 @@ impl<'a> Parser<'a> {
         self.next_token();
         let rhs = self.parse_expression(Precedence::PREFIX)?;
 
-        self.dbg_untrace();
+        self.dbg_untrace("parse_prefix_expression");
 
         Ok(Box::new(PrefixExpression::new(
             current_token.clone(),
@@ -257,7 +349,7 @@ impl<'a> Parser<'a> {
         self.next_token();
         let rhs = self.parse_expression(precedence)?;
 
-        self.dbg_untrace();
+        self.dbg_untrace("parse_prefix_expression");
 
         Ok(Box::new(InfixExpression::new(
             current_token.clone(),
@@ -265,6 +357,37 @@ impl<'a> Parser<'a> {
             current_token.literal,
             rhs,
         )))
+    }
+
+    fn parse_block_statement(&mut self) -> Result<BlockStatement> {
+        self.dbg_trace("parse_block_statement");
+        let current_token = &self.current_token.clone();
+        let mut statements: Vec<Box<dyn Statement>> = Vec::new();
+
+        self.next_token();
+
+        loop {
+            if self.current_token_is(TokenType::RBRACE) {
+                break;
+            } else if self.current_token_is(TokenType::EOF) {
+                self.unexpected_error("RBRACE", self.current_token.clone());
+                break;
+            }
+
+            match self.parse_statement() {
+                Ok(stmt) => {
+                    statements.push(stmt);
+                }
+                _ => (),
+            };
+
+            self.next_token();
+        }
+
+        let stmt = BlockStatement::new(current_token.clone(), statements);
+
+        self.dbg_untrace("parse_block_expression");
+        Ok(stmt)
     }
 
     fn parse_return_statement(&mut self) -> StatementResult {
@@ -284,7 +407,7 @@ impl<'a> Parser<'a> {
 
         let stmt = ReturnStatement::new(current_token.clone(), None);
 
-        self.dbg_untrace();
+        self.dbg_untrace("parse_return_statement");
         Ok(Box::new(stmt))
     }
 
@@ -298,7 +421,7 @@ impl<'a> Parser<'a> {
                     self.next_token();
                 }
 
-                self.dbg_untrace();
+                self.dbg_untrace("parse_expression_statement");
                 Ok(Box::new(stmt))
             }
             Err(err) => Err(err),
@@ -332,7 +455,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            self.dbg_untrace();
+            self.dbg_untrace("parse_expression");
             Ok(left_exp)
         } else {
             self.errors.push(format!(
@@ -368,7 +491,7 @@ impl<'a> Parser<'a> {
         }
 
         self.next_token();
-        self.dbg_untrace();
+        self.dbg_untrace("parse_grouped_expression");
         exp
     }
 
@@ -420,7 +543,13 @@ impl<'a> Parser<'a> {
 
         let stmt = DeclareStatement::new(current_token.clone(), identifier, type_specifier, None);
 
-        self.dbg_untrace();
+        self.dbg_untrace(
+            format!(
+                "parse_{}_statement",
+                current_token.literal.clone().to_lowercase()
+            )
+            .as_str(),
+        );
         Ok(Box::new(stmt))
     }
 
@@ -437,13 +566,20 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn warn(&mut self, text: &str) {
+        self.warnings.push(format!(
+            "Warning({}): {}",
+            self.current_token.get_location(),
+            text
+        ));
+    }
+
     fn dbg_trace(&mut self, context: &str) {
         if !self.dbg_tracing_enabled {
             return;
         }
         let padding = "    ".repeat(self.dbg_indent);
-        self.dbg_context = context.to_string();
-        println!("{}BEGIN {}", padding, self.dbg_context);
+        println!("{}BEGIN {}", padding, context);
         self.dbg_indent += 1;
     }
 
@@ -455,7 +591,7 @@ impl<'a> Parser<'a> {
         println!("{}ACTION {}", padding, context);
     }
 
-    fn dbg_untrace(&mut self) {
+    fn dbg_untrace(&mut self, context: &str) {
         if !self.dbg_tracing_enabled {
             return;
         }
@@ -463,7 +599,7 @@ impl<'a> Parser<'a> {
             self.dbg_indent -= 1;
         }
         let padding = "    ".repeat(self.dbg_indent);
-        println!("{}END {}", padding, self.dbg_context);
+        println!("{}END {}", padding, context);
     }
 }
 

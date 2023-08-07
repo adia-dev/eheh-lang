@@ -2,8 +2,9 @@ pub mod tests {
     use crate::{
         ast::{
             expressions::{
-                boolean::Boolean, identifier::Identifier, infix_expression::InfixExpression,
-                integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
+                boolean::Boolean, identifier::Identifier, if_expression::IfExpression,
+                infix_expression::InfixExpression, integer_literal::IntegerLiteral,
+                prefix_expression::PrefixExpression,
             },
             statements::{
                 declare_statements::DeclareStatement, expression_statements::ExpressionStatement,
@@ -245,7 +246,7 @@ pub mod tests {
         }
     }
 
-        #[test]
+    #[test]
     fn test_operator_precedence() {
         let mut infix_inputs: Vec<(&str, &str)> = Vec::new();
         infix_inputs.push(("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"));
@@ -270,6 +271,51 @@ pub mod tests {
         }
     }
 
+    #[test]
+    fn test_if_expression() {
+        const CODE: &'static str = r#"
+            if x < (y + 1) { x }
+            if x < y { x } else { y }
+            if true {
+                x // eheh
+            }else {
+                /* This alternative statement is empty and can be removed.
+                 * eheh
+                 */
+            }
+            if false {
+                if true {
+                    // even nested if statements works !!!!!
+                    eheh
+                }
+            }
+
+            if true {
+            } else {
+                true
+            }
+
+            if true {
+            } else {
+            }
+        "#;
+
+        let mut lexer = Lexer::new(CODE);
+        let mut parser = Parser::new(&mut lexer);
+
+        let program = parser.parse().unwrap();
+
+        assert!(parser.errors.is_empty(), "{:#?}", parser.errors);
+        // println!("{:#?}", parser.warnings);
+        assert_eq!(program.statements.len(), 6);
+
+        for stmt in &program.statements {
+            let exp_stmt = test_downcast_expression_statement_helper(stmt);
+            let _if_exp = downcast_expression_helper::<IfExpression>(&exp_stmt.expression);
+            // println!("{:#?}\n", if_exp);
+            // println!("{}\n", if_exp.to_string());
+        }
+    }
 
     fn test_downcast_expression_statement_helper(
         statement: &Box<dyn Statement>,
@@ -286,7 +332,10 @@ pub mod tests {
         match exp.as_any().downcast_ref::<T>() {
             Some(t_exp) => t_exp,
             None => {
-                panic!("Failed to downcast an expression: {:?}", exp.get_token_literal())
+                panic!(
+                    "Failed to downcast an expression: {:?}",
+                    exp.get_token_literal()
+                )
             }
         }
     }

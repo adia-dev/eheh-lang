@@ -1,7 +1,6 @@
 use self::token_type::TokenType;
 
 pub mod token_type;
-
 #[derive(Debug, Clone)]
 pub struct Token {
     pub t: TokenType,
@@ -18,5 +17,9 @@ impl Token {
             line,
             position,
         }
+    }
+
+    pub fn get_location(& self) -> String {
+        format!("{}:{}", self.line, self.position)
     }
 }

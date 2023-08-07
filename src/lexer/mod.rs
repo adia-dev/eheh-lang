@@ -101,11 +101,11 @@ impl Lexer {
             '/' => {
                 if self.scan_compound_token(&mut token, '/', TokenType::COMMENT) {
                     self.eat_comment();
-                    return token;
+                    return self.scan();
                 } else if self.scan_compound_token(&mut token, '*', TokenType::COMMENTBLOCK) {
                     self.eat_comment_block();
                     self.advance();
-                    return token;
+                    return self.scan();
                 }
                 token.t = TokenType::FORWARDSLASH;
             }

@@ -575,21 +575,36 @@ impl<'a> Parser<'a> {
         self.dbg_trace("parse_return_statement");
         let current_token = &self.current_token.clone();
 
-        loop {
-            if self.current_token_is(TokenType::SEMICOLON) {
-                break;
-            } else if self.current_token_is(TokenType::EOF) {
-                self.unexpected_error("EXPR | SEMICOLON", self.current_token.clone());
-                break;
-            }
-
+        if self.peek_token_is(TokenType::SEMICOLON) {
+            self.dbg_untrace("parse_return_statement");
             self.advance_token();
+            return Ok(Box::new(ReturnStatement::new(current_token.clone(), None)));
         }
 
-        let stmt = ReturnStatement::new(current_token.clone(), None);
+        self.advance_token();
 
-        self.dbg_untrace("parse_return_statement");
-        Ok(Box::new(stmt))
+        match self.parse_expression(Precedence::LOWEST) {
+            Ok(ret_val) => {
+                if !self.expect_peek_token_to_be(TokenType::SEMICOLON) {
+                    return self.error(
+                        format!(
+                            "Parsing Error: Expected token {} got {} at {}:{}",
+                            TokenType::IDENT,
+                            self.peek_token.t,
+                            self.peek_token.line,
+                            self.peek_token.position,
+                        )
+                        .as_str(),
+                    );
+                }
+                self.dbg_untrace("parse_return_statement");
+                Ok(Box::new(ReturnStatement::new(
+                    current_token.clone(),
+                    Some(ret_val),
+                )))
+            }
+            Err(err) => self.error(err.to_string().as_str()),
+        }
     }
 
     fn parse_expression_statement(&mut self) -> StatementResult {
@@ -706,32 +721,57 @@ impl<'a> Parser<'a> {
             self.expect_peek_token_to_be(TokenType::ASSIGN);
         }
 
-        loop {
-            if self.current_token_is(TokenType::EOF) {
-                self.errors.push(format!(
-                    "Expected next token to be {}, got EOF instead at {}:{}",
-                    TokenType::SEMICOLON,
-                    current_token.line,
-                    current_token.position
-                ));
-                break;
-            }
-            if self.current_token_is(TokenType::SEMICOLON) {
-                break;
-            }
+        if self.peek_token_is(TokenType::SEMICOLON) {
             self.advance_token();
+
+            self.dbg_untrace(
+                format!(
+                    "parse_{}_statement",
+                    current_token.literal.clone().to_lowercase()
+                )
+                .as_str(),
+            );
+
+            return Ok(Box::new(DeclareStatement::new(
+                current_token.clone(),
+                identifier,
+                type_specifier,
+                None,
+            )));
         }
 
-        let stmt = DeclareStatement::new(current_token.clone(), identifier, type_specifier, None);
+        self.advance_token();
 
-        self.dbg_untrace(
-            format!(
-                "parse_{}_statement",
-                current_token.literal.clone().to_lowercase()
-            )
-            .as_str(),
-        );
-        Ok(Box::new(stmt))
+        match self.parse_expression(Precedence::LOWEST) {
+            Ok(val) => {
+                if !self.expect_peek_token_to_be(TokenType::SEMICOLON) {
+                    return self.error(
+                        format!(
+                            "Parsing Error: Expected token {} got {} at {}:{}",
+                            TokenType::IDENT,
+                            self.peek_token.t,
+                            self.peek_token.line,
+                            self.peek_token.position,
+                        )
+                        .as_str(),
+                    );
+                }
+                self.dbg_untrace(
+                    format!(
+                        "parse_{}_statement",
+                        current_token.literal.clone().to_lowercase()
+                    )
+                    .as_str(),
+                );
+                Ok(Box::new(DeclareStatement::new(
+                    current_token.clone(),
+                    identifier,
+                    type_specifier,
+                    Some(val),
+                )))
+            }
+            Err(err) => self.error(err.to_string().as_str()),
+        }
     }
 
     fn parse_type_specifier(&mut self) -> Option<String> {

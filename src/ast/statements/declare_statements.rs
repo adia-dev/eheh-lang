@@ -47,20 +47,33 @@ impl Statement for DeclareStatement {
 impl ToString for DeclareStatement {
     fn to_string(&self) -> String {
         if let Some(type_specifier) = &self.type_specifier {
-            format!(
-                "{} {}: {} = {};",
-                self.token.literal,
-                self.name.get_token_literal(),
-                type_specifier,
-                "(not implemented yet !)"
-            )
+            if let Some(value) = &self.value {
+                format!(
+                    "{} {}: {} = {};",
+                    self.token.literal,
+                    self.name.get_token_literal(),
+                    type_specifier,
+                    value.to_string()
+                )
+            } else {
+                format!(
+                    "{} {}: {};",
+                    self.token.literal,
+                    self.name.get_token_literal(),
+                    type_specifier
+                )
+            }
         } else {
-            format!(
-                "{} {} = {};",
-                self.token.literal,
-                self.name.get_token_literal(),
-                "(not implemented yet !)"
-            )
+            if let Some(value) = &self.value {
+                format!(
+                    "{} {} = {};",
+                    self.token.literal,
+                    self.name.get_token_literal(),
+                    value.to_string()
+                )
+            } else {
+                format!("{} {};", self.token.literal, self.name.get_token_literal())
+            }
         }
     }
 }

@@ -2,12 +2,14 @@ pub mod tests {
     use crate::{
         ast::{
             expressions::{
-                boolean::Boolean, function::Function, identifier::Identifier,
-                if_expression::IfExpression, infix_expression::InfixExpression,
-                integer_literal::IntegerLiteral, prefix_expression::PrefixExpression, call_expression::CallExpression,
+                boolean::Boolean, call_expression::CallExpression, function::Function,
+                identifier::Identifier, if_expression::IfExpression,
+                infix_expression::InfixExpression, integer_literal::IntegerLiteral,
+                prefix_expression::PrefixExpression,
             },
             statements::{
                 declare_statements::DeclareStatement, expression_statements::ExpressionStatement,
+                return_statements::ReturnStatement,
             },
         },
         lexer::Lexer,
@@ -22,8 +24,8 @@ pub mod tests {
             let x = 0;
             let y;
             const NUMBER_OF_ROWS: i32 = 100;;;
-            var notifier = null;
-            let first_name: string = "Abdoulaye Dia";
+            var notifier;
+            let age: u32 = 20 + 3 * 3;
         "#;
 
         let mut lexer = Lexer::new(CODE);
@@ -34,15 +36,20 @@ pub mod tests {
         assert!(parser.errors.is_empty(), "{:?}", parser.errors);
         assert_eq!(program.statements.len(), 5);
 
-        let expected_identifiers: Vec<(TokenType, &str)> = vec![
-            (TokenType::KEYWORD(KeywordTokenType::LET), "x"),
-            (TokenType::KEYWORD(KeywordTokenType::LET), "y"),
+        let expected_identifiers: Vec<(TokenType, &str, &str)> = vec![
+            (TokenType::KEYWORD(KeywordTokenType::LET), "x", "0"),
+            (TokenType::KEYWORD(KeywordTokenType::LET), "y", ""),
             (
                 TokenType::KEYWORD(KeywordTokenType::CONST),
                 "NUMBER_OF_ROWS",
+                "100",
             ),
-            (TokenType::KEYWORD(KeywordTokenType::VAR), "notifier"),
-            (TokenType::KEYWORD(KeywordTokenType::LET), "first_name"),
+            (TokenType::KEYWORD(KeywordTokenType::VAR), "notifier", ""),
+            (
+                TokenType::KEYWORD(KeywordTokenType::LET),
+                "age",
+                "(20 + (3 * 3))",
+            ),
         ];
 
         expected_identifiers
@@ -53,6 +60,9 @@ pub mod tests {
                     let declare_stmt = downcast_statement_helper::<DeclareStatement>(&stmt);
                     assert_eq!(identifier.0, declare_stmt.token.t);
                     assert_eq!(identifier.1.to_owned(), declare_stmt.name.value);
+                    if let Some(value) = &declare_stmt.value {
+                        assert_eq!(identifier.2.to_owned(), value.to_string());
+                    }
                 }
             });
     }
@@ -109,16 +119,28 @@ pub mod tests {
             return x;
             return y + b;
             return;
-            return ("Abdoulaye Dia");
+            return (10 * 2 * (54 / 2 % 8));
         "#;
 
         let mut lexer = Lexer::new(CODE);
         let mut parser = Parser::new(&mut lexer);
+        let expected_values: Vec<&str> =
+            vec!["return x;", "return (y + b);", "return;", "return ((10 * 2) * ((54 / 2) % 8));"];
 
         let program = parser.parse().unwrap();
 
-        assert!(parser.errors.is_empty());
+        assert!(parser.errors.is_empty(), "{:#?}", parser.errors);
         assert_eq!(program.statements.len(), 4);
+
+        expected_values
+            .iter()
+            .enumerate()
+            .for_each(|(i, expected)| {
+                if let Some(stmt) = program.statements.get(i) {
+                    let return_exp = downcast_statement_helper::<ReturnStatement>(&stmt);
+                    assert_eq!(expected.to_string(), return_exp.to_string());
+                }
+            });
     }
 
     #[test]

@@ -33,6 +33,10 @@ impl Statement for ReturnStatement {
 
 impl ToString for ReturnStatement {
     fn to_string(&self) -> String {
-        format!("return {:?};", self.value)
+        if let Some(val) = &self.value {
+            format!("return {};", val.to_string())
+        } else {
+            format!("return;")
+        }
     }
 }

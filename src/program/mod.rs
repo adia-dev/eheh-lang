@@ -49,8 +49,8 @@ mod tests {
             let x = 0;
             let y;
             const NUMBER_OF_ROWS: i32 = 100;
-            var notifier = null;
-            let first_name: string = "Abdoulaye Dia";
+            var notifier = 10;
+            let age: u32 = 20 + 3;
             return 10;
         "#;
 
@@ -62,12 +62,12 @@ mod tests {
         assert_eq!(program.statements.len(), 6);
 
         let expected_strings: Vec<&str> = vec![
-            "let x = (not implemented yet !);",
-            "let y = (not implemented yet !);",
-            "const NUMBER_OF_ROWS: i32 = (not implemented yet !);",
-            "var notifier = (not implemented yet !);",
-            "let first_name: string = (not implemented yet !);",
-            "return None;",
+            "let x = 0;",
+            "let y;",
+            "const NUMBER_OF_ROWS: i32 = 100;",
+            "var notifier = 10;",
+            "let age: u32 = (20 + 3);",
+            "return 10;",
         ];
 
         expected_strings.iter().enumerate().for_each(|(i, s)| {

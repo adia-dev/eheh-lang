@@ -16,18 +16,19 @@ pub enum Precedence {
 }
 
 impl Precedence {
-    pub fn from_token_type(t: &TokenType) -> Precedence {
+    pub fn from_token_type(t: &TokenType) -> Self {
         match t {
-            TokenType::EQ | TokenType::NEQ => Precedence::EQ,
-            TokenType::LT | TokenType::GT | TokenType::LTE | TokenType::GTE => Precedence::LGT,
-            TokenType::LSHIFT | TokenType::RSHIFT => Precedence::BITWISE,
-            TokenType::PLUS | TokenType::MINUS => Precedence::SUM,
+            TokenType::EQ | TokenType::NEQ => Self::EQ,
+            TokenType::LT | TokenType::GT | TokenType::LTE | TokenType::GTE => Self::LGT,
+            TokenType::LSHIFT | TokenType::RSHIFT => Self::BITWISE,
+            TokenType::PLUS | TokenType::MINUS => Self::SUM,
             TokenType::ASTERISK | TokenType::FORWARDSLASH | TokenType::PERCENT => {
-                Precedence::PRODUCT
+                Self::PRODUCT
             }
-            TokenType::EXPONENT => Precedence::EXPONENT,
-            TokenType::INCR | TokenType::DECR | TokenType::BANG => Precedence::PREFIX,
-            _ => Precedence::LOWEST,
+            TokenType::EXPONENT => Self::EXPONENT,
+            TokenType::INCR | TokenType::DECR | TokenType::BANG => Self::PREFIX,
+            TokenType::LPAREN => Self::CALL,
+            _ => Self::LOWEST,
         }
     }
 }

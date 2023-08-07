@@ -4,7 +4,7 @@ pub mod tests {
             expressions::{
                 boolean::Boolean, function::Function, identifier::Identifier,
                 if_expression::IfExpression, infix_expression::InfixExpression,
-                integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
+                integer_literal::IntegerLiteral, prefix_expression::PrefixExpression, call_expression::CallExpression,
             },
             statements::{
                 declare_statements::DeclareStatement, expression_statements::ExpressionStatement,
@@ -345,6 +345,30 @@ pub mod tests {
             let exp_stmt = test_downcast_expression_statement_helper(stmt);
             let _fn_exp = downcast_expression_helper::<Function>(&exp_stmt.expression);
             // println!("{}\n", exp_stmt.to_string());
+        }
+    }
+
+    #[test]
+    fn test_call_expression() {
+        const CODE: &'static str = r#"
+            add(1, 2)
+            print(1 + 1, 3 * 2 / 3)
+            start_server()
+        "#;
+
+        let mut lexer = Lexer::new(CODE);
+        let mut parser = Parser::new(&mut lexer);
+
+        let program = parser.parse().unwrap();
+
+        assert!(parser.errors.is_empty(), "{:#?}", parser.errors);
+        // println!("{:#?}", parser.warnings);
+        assert_eq!(program.statements.len(), 3);
+
+        for stmt in &program.statements {
+            let exp_stmt = test_downcast_expression_statement_helper(stmt);
+            let _call_exp = downcast_expression_helper::<CallExpression>(&exp_stmt.expression);
+            // println!("{}\n", call_exp.to_string());
         }
     }
 

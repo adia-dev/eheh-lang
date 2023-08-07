@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::{
     ast::{
         expressions::{
-            boolean::Boolean, function::Function, identifier::Identifier,
-            if_expression::IfExpression, infix_expression::InfixExpression,
+            boolean::Boolean, call_expression::CallExpression, function::Function,
+            identifier::Identifier, if_expression::IfExpression, infix_expression::InfixExpression,
             integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
             typed_identifier::TypedIdentifier,
         },
@@ -131,6 +131,9 @@ impl<'a> Parser<'a> {
             self.infix_fns
                 .insert(t.clone(), Self::parse_infix_expression);
         }
+
+        self.infix_fns
+            .insert(TokenType::LPAREN, Self::parse_call_expression);
     }
 
     fn advance_token(&mut self) {
@@ -456,6 +459,50 @@ impl<'a> Parser<'a> {
         }
 
         Ok(parameters)
+    }
+
+    fn parse_call_expression(&mut self, function: Box<dyn Expression>) -> ExpressionResult {
+        let args = self.parse_call_arguments()?;
+        let call_exp = CallExpression::new(self.current_token.clone(), function, args);
+        Ok(Box::new(call_exp))
+    }
+
+    fn parse_call_arguments(&mut self) -> Result<Vec<Box<dyn Expression>>> {
+        let mut args: Vec<Box<dyn Expression>> = Vec::new();
+
+        if self.peek_token_is(TokenType::RPAREN) {
+            self.advance_token();
+            return Ok(args);
+        }
+
+        self.advance_token();
+        args.push(self.parse_expression(Precedence::LOWEST)?);
+
+        loop {
+            if !self.peek_token_is(TokenType::COMMA) {
+                break;
+            }
+
+            self.advance_token();
+            self.advance_token();
+
+            args.push(self.parse_expression(Precedence::LOWEST)?);
+        }
+
+        if !self.expect_peek_token_to_be(TokenType::RPAREN) {
+            return self.error(
+                format!(
+                    "Expected token to be {}, got {} instead at {}:{}",
+                    TokenType::RPAREN,
+                    self.peek_token.t,
+                    self.peek_token.line,
+                    self.peek_token.position
+                )
+                .as_str(),
+            );
+        }
+
+        Ok(args)
     }
 
     // double cloning eww :/

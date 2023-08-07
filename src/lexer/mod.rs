@@ -50,6 +50,11 @@ impl Lexer {
                 if self.scan_compound_token(&mut token, '-', TokenType::DECR) {
                     return token;
                 }
+
+                if self.scan_compound_token(&mut token, '>', TokenType::ARROW) {
+                    return token;
+                }
+
                 token.t = TokenType::MINUS;
             }
             '^' => {

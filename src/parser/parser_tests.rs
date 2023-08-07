@@ -2,9 +2,9 @@ pub mod tests {
     use crate::{
         ast::{
             expressions::{
-                boolean::Boolean, identifier::Identifier, if_expression::IfExpression,
-                infix_expression::InfixExpression, integer_literal::IntegerLiteral,
-                prefix_expression::PrefixExpression,
+                boolean::Boolean, function::Function, identifier::Identifier,
+                if_expression::IfExpression, infix_expression::InfixExpression,
+                integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
             },
             statements::{
                 declare_statements::DeclareStatement, expression_statements::ExpressionStatement,
@@ -314,6 +314,37 @@ pub mod tests {
             let _if_exp = downcast_expression_helper::<IfExpression>(&exp_stmt.expression);
             // println!("{:#?}\n", if_exp);
             // println!("{}\n", if_exp.to_string());
+        }
+    }
+
+    #[test]
+    fn test_function_expression() {
+        const CODE: &'static str = r#"
+            fn(x, y) { x + y }
+            fn add(x, y) { x + y } 
+            fn add(x: i32, y: i32) { x + y }
+            fn hello_world() {}
+            fn hello_user(username: str) -> string {}
+            fn join_thread(pid: u32, message: string, callback: fn) { 
+                // print("Hello World");
+                // ...
+                return new_pid;
+            }
+        "#;
+
+        let mut lexer = Lexer::new(CODE);
+        let mut parser = Parser::new(&mut lexer);
+
+        let program = parser.parse().unwrap();
+
+        assert!(parser.errors.is_empty(), "{:#?}", parser.errors);
+        // println!("{:#?}", parser.warnings);
+        assert_eq!(program.statements.len(), 6);
+
+        for stmt in &program.statements {
+            let exp_stmt = test_downcast_expression_statement_helper(stmt);
+            let _fn_exp = downcast_expression_helper::<Function>(&exp_stmt.expression);
+            // println!("{}\n", exp_stmt.to_string());
         }
     }
 

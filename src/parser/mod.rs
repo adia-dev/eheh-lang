@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use crate::{
     ast::{
         expressions::{
-            boolean::Boolean, identifier::Identifier, if_expression::IfExpression,
-            infix_expression::InfixExpression, integer_literal::IntegerLiteral,
-            prefix_expression::PrefixExpression,
+            boolean::Boolean, function::Function, identifier::Identifier,
+            if_expression::IfExpression, infix_expression::InfixExpression,
+            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
+            typed_identifier::TypedIdentifier,
         },
         precedence::Precedence,
         statements::{
@@ -26,7 +27,7 @@ use crate::{
 pub struct Parser<'a> {
     lexer: &'a mut Lexer,
     current_token: Token,
-    next_token: Token,
+    peek_token: Token,
     errors: Vec<String>,
     warnings: Vec<String>,
     prefix_fns: HashMap<TokenType, PrefixParseFn<'a>>,
@@ -38,14 +39,14 @@ pub struct Parser<'a> {
 impl<'a> Parser<'a> {
     pub fn new(lexer: &'a mut Lexer) -> Self {
         let current_token = lexer.scan();
-        let next_token = lexer.scan();
+        let peek_token = lexer.scan();
         let prefix_fns = HashMap::new();
         let infix_fns = HashMap::new();
 
         let mut parser = Self {
             lexer,
             current_token,
-            next_token,
+            peek_token,
             errors: Vec::new(),
             warnings: Vec::new(),
             prefix_fns,
@@ -82,6 +83,11 @@ impl<'a> Parser<'a> {
         self.prefix_fns.insert(
             TokenType::KEYWORD(KeywordTokenType::IF),
             Self::parse_if_expression,
+        );
+
+        self.prefix_fns.insert(
+            TokenType::KEYWORD(KeywordTokenType::FUN),
+            Self::parse_function,
         );
 
         let prefix_tokens: Vec<TokenType> = vec![
@@ -127,13 +133,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn next_token(&mut self) {
-        self.current_token = self.next_token.clone();
-        self.next_token = self.lexer.scan();
+    fn advance_token(&mut self) {
+        self.current_token = self.peek_token.clone();
+        self.peek_token = self.lexer.scan();
     }
 
-    fn next_token_is(&self, t: TokenType) -> bool {
-        self.next_token.t == t
+    fn peek_token_is(&self, t: TokenType) -> bool {
+        self.peek_token.t == t
     }
 
     fn current_token_is(&self, t: TokenType) -> bool {
@@ -141,7 +147,7 @@ impl<'a> Parser<'a> {
     }
 
     fn peek_precedence(&self) -> Precedence {
-        Precedence::from_token_type(&self.next_token.t)
+        Precedence::from_token_type(&self.peek_token.t)
     }
 
     fn current_precedence(&self) -> Precedence {
@@ -157,7 +163,7 @@ impl<'a> Parser<'a> {
 
     fn expect_token(&mut self, t: TokenType) -> bool {
         if self.current_token_is(t.clone()) {
-            self.next_token();
+            self.advance_token();
             true
         } else {
             self.errors.push(format!(
@@ -168,14 +174,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expect_next_token(&mut self, t: TokenType) -> bool {
-        if self.next_token_is(t.clone()) {
-            self.next_token();
+    fn expect_peek_token_to_be(&mut self, t: TokenType) -> bool {
+        if self.peek_token_is(t.clone()) {
+            self.advance_token();
             true
         } else {
             self.errors.push(format!(
                 "Expected token to be {}, got {} instead at {}:{}",
-                t, self.next_token.t, self.next_token.line, self.next_token.position
+                t, self.peek_token.t, self.peek_token.line, self.peek_token.position
             ));
             false
         }
@@ -188,7 +194,7 @@ impl<'a> Parser<'a> {
             match self.current_token.t {
                 TokenType::EOF | TokenType::ILLEGAL => break,
                 TokenType::SEMICOLON => {
-                    self.next_token();
+                    self.advance_token();
                     continue;
                 }
                 _ => {
@@ -203,7 +209,7 @@ impl<'a> Parser<'a> {
                         Err(_err) => (),
                     }
 
-                    self.next_token();
+                    self.advance_token();
                 }
             }
         }
@@ -245,25 +251,25 @@ impl<'a> Parser<'a> {
         let mut surrounded_by_paren = false;
 
         // optional parentheses around condition
-        if self.next_token_is(TokenType::LPAREN) {
-            self.next_token();
+        if self.peek_token_is(TokenType::LPAREN) {
+            self.advance_token();
             self.warn("unnecessary parentheses around `if` condition");
             surrounded_by_paren = true;
         }
 
-        if surrounded_by_paren && self.next_token_is(TokenType::RPAREN)
-            || self.next_token_is(TokenType::LBRACE)
+        if surrounded_by_paren && self.peek_token_is(TokenType::RPAREN)
+            || self.peek_token_is(TokenType::LBRACE)
         {
             self.errors.push("Parsing Error: If expressions need to contain a condition, maybe you forgot it.\nreminder: if (cond) { ... } <optional> else { ... }".to_string());
 
             return Err("Parsing Error: If expressions need to contain a condition, maybe you forgot it.\nrto_stringeminder: if (cond) { ... } <optional> else { ... }".into());
         }
 
-        self.next_token(); // first token of the condition expression
+        self.advance_token(); // first token of the condition expression
 
         let condition = self.parse_expression(Precedence::LOWEST)?;
 
-        self.next_token();
+        self.advance_token();
 
         if surrounded_by_paren && !self.expect_token(TokenType::RPAREN) {
             self.errors.push(format!(
@@ -294,9 +300,9 @@ impl<'a> Parser<'a> {
         let consequence = self.parse_block_statement()?;
         let mut alternative: Option<BlockStatement> = None;
 
-        if self.next_token_is(TokenType::KEYWORD(KeywordTokenType::ELSE)) {
-            self.next_token();
-            self.next_token();
+        if self.peek_token_is(TokenType::KEYWORD(KeywordTokenType::ELSE)) {
+            self.advance_token();
+            self.advance_token();
             alternative = Some(self.parse_block_statement()?);
         }
 
@@ -324,12 +330,140 @@ impl<'a> Parser<'a> {
         )))
     }
 
+    fn parse_function(&mut self) -> ExpressionResult {
+        self.dbg_trace("parse_if_expression");
+
+        let current_token = self.current_token.clone(); // fn
+
+        let mut name: Option<Identifier> = None;
+
+        if self.peek_token_is(TokenType::IDENT) {
+            self.advance_token();
+            name = Some(Identifier::from_token(&self.current_token));
+        }
+
+        if !self.expect_peek_token_to_be(TokenType::LPAREN) {
+            return self.error(
+                format!(
+                    "Expected token to be {}, got {} instead at {}:{}",
+                    TokenType::LPAREN,
+                    self.peek_token.t,
+                    self.peek_token.line,
+                    self.peek_token.position
+                )
+                .as_str(),
+            );
+        }
+
+        let parameters: Vec<TypedIdentifier> = self.parse_function_parameters()?;
+
+        let mut return_type: Option<Identifier> = None;
+
+        if self.peek_token_is(TokenType::ARROW) {
+            self.advance_token();
+
+            if !self.expect_peek_token_to_be(TokenType::IDENT) {
+                return self.error("The function type has not been declared properly, expected: fn(...) `-> T` { ... }");
+            }
+
+            return_type = Some(Identifier::from_token(&self.current_token));
+        }
+
+        if !self.expect_peek_token_to_be(TokenType::LBRACE) {
+            return self.error(
+                format!(
+                    "Expected token to be {}, got {} instead at {}:{}",
+                    TokenType::LBRACE,
+                    self.peek_token.t,
+                    self.peek_token.line,
+                    self.peek_token.position
+                )
+                .as_str(),
+            );
+        }
+
+        let body = self.parse_block_statement()?;
+
+        if body.statements.is_empty() {
+            self.warn("The function presents no body, it means the execution of that function results in nothing.\nYou might want to remove it.");
+        }
+
+        self.dbg_untrace("parse_function_expression");
+        Ok(Box::new(Function::new(
+            current_token.clone(),
+            name,
+            None,
+            parameters,
+            return_type,
+            body,
+        )))
+    }
+
+    fn parse_function_parameters(&mut self) -> Result<Vec<TypedIdentifier>> {
+        let mut parameters: Vec<TypedIdentifier> = Vec::new();
+
+        if self.peek_token_is(TokenType::RPAREN) {
+            self.advance_token();
+            return Ok(parameters);
+        }
+
+        self.advance_token();
+
+        let param_ident = Identifier::from_token(&self.current_token);
+        let mut param_t: Option<Identifier> = None;
+        if self.peek_token_is(TokenType::COLON) {
+            self.advance_token();
+            self.advance_token();
+
+            param_t = Some(Identifier::from_token(&self.current_token));
+        }
+
+        let param = TypedIdentifier::new(param_ident, param_t);
+        parameters.push(param);
+
+        loop {
+            if !self.peek_token_is(TokenType::COMMA) {
+                break;
+            }
+
+            self.advance_token();
+            self.advance_token();
+
+            let ident = Identifier::from_token(&self.current_token);
+
+            let mut t: Option<Identifier> = None;
+            if self.peek_token_is(TokenType::COLON) {
+                self.advance_token();
+                self.advance_token();
+
+                t = Some(Identifier::from_token(&self.current_token));
+            }
+
+            parameters.push(TypedIdentifier::new(ident, t));
+        }
+
+        if !self.expect_peek_token_to_be(TokenType::RPAREN) {
+            return self.error(
+                format!(
+                    "Expected token to be {}, got {} instead at {}:{}",
+                    TokenType::RPAREN,
+                    self.peek_token.t,
+                    self.peek_token.line,
+                    self.peek_token.position
+                )
+                .as_str(),
+            );
+        }
+
+        Ok(parameters)
+    }
+
     // double cloning eww :/
     fn parse_prefix_expression(&mut self) -> ExpressionResult {
         self.dbg_trace(format!("parse_prefix_expression: {}", self.current_token.t).as_str());
 
         let current_token = self.current_token.clone();
-        self.next_token();
+        self.advance_token();
         let rhs = self.parse_expression(Precedence::PREFIX)?;
 
         self.dbg_untrace("parse_prefix_expression");
@@ -346,7 +480,7 @@ impl<'a> Parser<'a> {
 
         let precedence = self.current_precedence();
         let current_token = self.current_token.clone();
-        self.next_token();
+        self.advance_token();
         let rhs = self.parse_expression(precedence)?;
 
         self.dbg_untrace("parse_prefix_expression");
@@ -364,7 +498,7 @@ impl<'a> Parser<'a> {
         let current_token = &self.current_token.clone();
         let mut statements: Vec<Box<dyn Statement>> = Vec::new();
 
-        self.next_token();
+        self.advance_token();
 
         loop {
             if self.current_token_is(TokenType::RBRACE) {
@@ -381,7 +515,7 @@ impl<'a> Parser<'a> {
                 _ => (),
             };
 
-            self.next_token();
+            self.advance_token();
         }
 
         let stmt = BlockStatement::new(current_token.clone(), statements);
@@ -402,7 +536,7 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            self.next_token();
+            self.advance_token();
         }
 
         let stmt = ReturnStatement::new(current_token.clone(), None);
@@ -417,8 +551,8 @@ impl<'a> Parser<'a> {
             Ok(expression) => {
                 let stmt = ExpressionStatement::new(self.current_token.clone(), expression);
 
-                if self.next_token_is(TokenType::SEMICOLON) {
-                    self.next_token();
+                if self.peek_token_is(TokenType::SEMICOLON) {
+                    self.advance_token();
                 }
 
                 self.dbg_untrace("parse_expression_statement");
@@ -434,7 +568,7 @@ impl<'a> Parser<'a> {
             let mut left_exp = prefix_fn(self)?;
 
             loop {
-                if self.next_token_is(TokenType::SEMICOLON) || self.next_token_is(TokenType::EOF) {
+                if self.peek_token_is(TokenType::SEMICOLON) || self.peek_token_is(TokenType::EOF) {
                     break;
                 }
 
@@ -442,8 +576,8 @@ impl<'a> Parser<'a> {
                     break;
                 }
 
-                if let Some(_infix_fn) = self.infix_fns.get(&self.next_token.t) {
-                    self.next_token();
+                if let Some(_infix_fn) = self.infix_fns.get(&self.peek_token.t) {
+                    self.advance_token();
                 } else {
                     break;
                 }
@@ -473,11 +607,11 @@ impl<'a> Parser<'a> {
 
     fn parse_grouped_expression(&mut self) -> ExpressionResult {
         self.dbg_trace("parse_grouped_expression");
-        self.next_token();
+        self.advance_token();
 
         let exp = self.parse_expression(Precedence::LOWEST);
 
-        if !self.next_token_is(TokenType::RPAREN) {
+        if !self.peek_token_is(TokenType::RPAREN) {
             self.errors.push(format!(
                 "Parsing Error: Could not parse a grouped expression, expected token RPAREN, got {}",
                 self.current_token.t
@@ -490,7 +624,7 @@ impl<'a> Parser<'a> {
             .into());
         }
 
-        self.next_token();
+        self.advance_token();
         self.dbg_untrace("parse_grouped_expression");
         exp
     }
@@ -505,13 +639,13 @@ impl<'a> Parser<'a> {
             .as_str(),
         );
 
-        if !self.expect_next_token(TokenType::IDENT) {
+        if !self.expect_peek_token_to_be(TokenType::IDENT) {
             return Err(format!(
                 "Parsing Error: Expected token {} got {} at {}:{}",
                 TokenType::IDENT,
-                self.next_token.t,
-                self.next_token.line,
-                self.next_token.position,
+                self.peek_token.t,
+                self.peek_token.line,
+                self.peek_token.position,
             )
             .into());
         }
@@ -519,10 +653,10 @@ impl<'a> Parser<'a> {
         let identifier = Identifier::from_token(&self.current_token);
         let type_specifier = self.parse_type_specifier();
 
-        if self.next_token_is(TokenType::ASSIGN) {
-            self.next_token();
-        } else if !self.next_token_is(TokenType::SEMICOLON) {
-            self.expect_next_token(TokenType::ASSIGN);
+        if self.peek_token_is(TokenType::ASSIGN) {
+            self.advance_token();
+        } else if !self.peek_token_is(TokenType::SEMICOLON) {
+            self.expect_peek_token_to_be(TokenType::ASSIGN);
         }
 
         loop {
@@ -538,7 +672,7 @@ impl<'a> Parser<'a> {
             if self.current_token_is(TokenType::SEMICOLON) {
                 break;
             }
-            self.next_token();
+            self.advance_token();
         }
 
         let stmt = DeclareStatement::new(current_token.clone(), identifier, type_specifier, None);
@@ -554,9 +688,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_type_specifier(&mut self) -> Option<String> {
-        if self.next_token_is(TokenType::COLON) {
-            self.next_token();
-            if self.expect_next_token(TokenType::IDENT) {
+        if self.peek_token_is(TokenType::COLON) {
+            self.advance_token();
+            if self.expect_peek_token_to_be(TokenType::IDENT) {
                 Some(self.current_token.clone().literal)
             } else {
                 None
@@ -566,12 +700,18 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn warn(&mut self, text: &str) {
+    fn warn(&mut self, reason: &str) {
         self.warnings.push(format!(
             "Warning({}): {}",
             self.current_token.get_location(),
-            text
+            reason
         ));
+    }
+
+    fn error<T>(&mut self, reason: &str) -> Result<T> {
+        let error_message = format!("Error({}): {}", self.current_token.get_location(), reason);
+        self.warnings.push(error_message.to_owned());
+        return Err(error_message.into());
     }
 
     fn dbg_trace(&mut self, context: &str) {

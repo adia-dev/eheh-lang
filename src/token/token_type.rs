@@ -54,6 +54,7 @@ pub enum TokenType {
     STRING,     // e.g: "Abdoulaye"
     TILDE,      // ~
     UNDERSCORE, // _
+    ARROW,      // ->
 }
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]

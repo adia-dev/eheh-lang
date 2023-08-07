@@ -25,11 +25,11 @@ use crate::{
 };
 
 pub struct Parser<'a> {
-    lexer: &'a mut Lexer,
+    pub lexer: &'a mut Lexer,
     current_token: Token,
     peek_token: Token,
-    errors: Vec<String>,
-    warnings: Vec<String>,
+    pub errors: Vec<String>,
+    pub warnings: Vec<String>,
     prefix_fns: HashMap<TokenType, PrefixParseFn<'a>>,
     infix_fns: HashMap<TokenType, InfixParseFn<'a>>,
     dbg_indent: usize,

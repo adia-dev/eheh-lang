@@ -1,6 +1,7 @@
 use crate::{
     token::Token,
-    traits::{expression::Expression, node::Node}, types::ASTExpression,
+    traits::{expression::Expression, node::Node},
+    types::ASTExpression,
 };
 
 #[derive(Debug)]
@@ -12,12 +13,7 @@ pub struct InfixExpression {
 }
 
 impl InfixExpression {
-    pub fn new(
-        token: Token,
-        lhs: ASTExpression,
-        operator: String,
-        rhs: ASTExpression,
-    ) -> Self {
+    pub fn new(token: Token, lhs: ASTExpression, operator: String, rhs: ASTExpression) -> Self {
         Self {
             token,
             lhs,

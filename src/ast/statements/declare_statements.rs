@@ -3,7 +3,8 @@ use std::any::Any;
 use crate::{
     ast::expressions::identifier::Identifier,
     token::Token,
-    traits::{expression::Expression, node::Node, statement::Statement}, types::ASTExpression,
+    traits::{node::Node, statement::Statement},
+    types::ASTExpression,
 };
 
 #[derive(Debug)]

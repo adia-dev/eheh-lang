@@ -2,7 +2,8 @@ use std::any::Any;
 
 use crate::{
     token::Token,
-    traits::{expression::Expression, node::Node, statement::Statement}, types::ASTExpression,
+    traits::{node::Node, statement::Statement},
+    types::ASTExpression,
 };
 
 #[derive(Debug)]

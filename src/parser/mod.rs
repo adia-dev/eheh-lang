@@ -20,8 +20,10 @@ use crate::{
         token_type::{KeywordTokenType, TokenType},
         Token,
     },
-    traits::{expression::Expression, statement::Statement},
-    types::{ASTExpressionResult, InfixParseFn, PrefixParseFn, Result, ASTStatementResult, ASTExpression, ASTStatement},
+    types::{
+        ASTExpression, ASTExpressionResult, ASTStatement, ASTStatementResult, InfixParseFn,
+        PrefixParseFn, Result,
+    },
 };
 
 pub struct Parser<'a> {
@@ -160,7 +162,7 @@ impl<'a> Parser<'a> {
     fn unexpected_error(&mut self, expected: &str, got: Token) {
         self.errors.push(format!(
             "Expected token to be {}, got {} instead at {}:{}",
-            expected, got.t, got.line, got.position
+            expected, got.t, got.line, got.column
         ))
     }
 
@@ -171,7 +173,7 @@ impl<'a> Parser<'a> {
         } else {
             self.errors.push(format!(
                 "Expected token to be {}, got {} instead at {}:{}",
-                t, self.current_token.t, self.current_token.line, self.current_token.position
+                t, self.current_token.t, self.current_token.line, self.current_token.column
             ));
             false
         }
@@ -184,7 +186,7 @@ impl<'a> Parser<'a> {
         } else {
             self.errors.push(format!(
                 "Expected token to be {}, got {} instead at {}:{}",
-                t, self.peek_token.t, self.peek_token.line, self.peek_token.position
+                t, self.peek_token.t, self.peek_token.line, self.peek_token.column
             ));
             false
         }
@@ -352,7 +354,7 @@ impl<'a> Parser<'a> {
                     TokenType::LPAREN,
                     self.peek_token.t,
                     self.peek_token.line,
-                    self.peek_token.position
+                    self.peek_token.column
                 )
                 .as_str(),
             );
@@ -379,7 +381,7 @@ impl<'a> Parser<'a> {
                     TokenType::LBRACE,
                     self.peek_token.t,
                     self.peek_token.line,
-                    self.peek_token.position
+                    self.peek_token.column
                 )
                 .as_str(),
             );
@@ -452,7 +454,7 @@ impl<'a> Parser<'a> {
                     TokenType::RPAREN,
                     self.peek_token.t,
                     self.peek_token.line,
-                    self.peek_token.position
+                    self.peek_token.column
                 )
                 .as_str(),
             );
@@ -496,7 +498,7 @@ impl<'a> Parser<'a> {
                     TokenType::RPAREN,
                     self.peek_token.t,
                     self.peek_token.line,
-                    self.peek_token.position
+                    self.peek_token.column
                 )
                 .as_str(),
             );
@@ -592,7 +594,7 @@ impl<'a> Parser<'a> {
                             TokenType::IDENT,
                             self.peek_token.t,
                             self.peek_token.line,
-                            self.peek_token.position,
+                            self.peek_token.column,
                         )
                         .as_str(),
                     );
@@ -707,7 +709,7 @@ impl<'a> Parser<'a> {
                 TokenType::IDENT,
                 self.peek_token.t,
                 self.peek_token.line,
-                self.peek_token.position,
+                self.peek_token.column,
             )
             .into());
         }
@@ -751,7 +753,7 @@ impl<'a> Parser<'a> {
                             TokenType::IDENT,
                             self.peek_token.t,
                             self.peek_token.line,
-                            self.peek_token.position,
+                            self.peek_token.column,
                         )
                         .as_str(),
                     );

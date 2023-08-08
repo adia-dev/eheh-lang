@@ -15,7 +15,7 @@ pub mod tests {
         lexer::Lexer,
         parser::Parser,
         token::token_type::{KeywordTokenType, TokenType},
-        traits::{expression::Expression, node::Node, statement::Statement},
+        traits::node::Node,
         types::{ASTExpression, ASTStatement},
     };
 

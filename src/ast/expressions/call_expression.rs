@@ -1,6 +1,7 @@
 use crate::{
     token::Token,
-    traits::{expression::Expression, node::Node}, types::ASTExpression,
+    traits::{expression::Expression, node::Node},
+    types::ASTExpression,
 };
 
 #[derive(Debug)]
@@ -11,11 +12,7 @@ pub struct CallExpression {
 }
 
 impl CallExpression {
-    pub fn new(
-        token: Token,
-        function: ASTExpression,
-        args: Vec<ASTExpression>,
-    ) -> Self {
+    pub fn new(token: Token, function: ASTExpression, args: Vec<ASTExpression>) -> Self {
         Self {
             token,
             function,

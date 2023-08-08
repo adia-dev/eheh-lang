@@ -1,6 +1,7 @@
 use crate::{
     token::Token,
-    traits::{expression::Expression, node::Node}, types::ASTExpression,
+    traits::{expression::Expression, node::Node},
+    types::ASTExpression,
 };
 
 #[derive(Debug)]

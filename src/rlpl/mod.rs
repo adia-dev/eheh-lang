@@ -1,10 +1,6 @@
 use std::io::{self, stdout, Write};
 
-use crate::{
-    lexer::Lexer,
-    parser::Parser,
-    token::{token_type::TokenType, Token},
-};
+use crate::{lexer::Lexer, parser::Parser};
 
 pub struct RLPL {
     pub version: String,

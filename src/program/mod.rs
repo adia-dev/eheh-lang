@@ -1,4 +1,4 @@
-use crate::{traits::{node::Node, statement::Statement}, types::ASTStatement};
+use crate::{traits::node::Node, types::ASTStatement};
 
 #[derive(Debug)]
 pub struct Program {

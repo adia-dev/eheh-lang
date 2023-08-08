@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use repl::REPL;
 use rlpl::RLPL;
 
 mod ast;

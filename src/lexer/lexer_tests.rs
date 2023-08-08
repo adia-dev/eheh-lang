@@ -34,12 +34,12 @@ mod tests {
             assert_eq!(
                 token.t, t,
                 "Expected token {} got {} at {}:{}",
-                t, token.t, token.line, token.position
+                t, token.t, token.line, token.column
             );
             assert_eq!(
                 token.t, t,
                 "Expected literal {} got {} at {}:{}",
-                literal, token.literal, token.line, token.position
+                literal, token.literal, token.line, token.column
             );
         }
     }
@@ -106,12 +106,12 @@ mod tests {
             assert_eq!(
                 token.t, t,
                 "Expected token {} got {} at {}:{}",
-                t, token.t, token.line, token.position
+                t, token.t, token.line, token.column
             );
             assert_eq!(
                 token.t, t,
                 "Expected literal {} got {} at {}:{}",
-                literal, token.literal, token.line, token.position
+                literal, token.literal, token.line, token.column
             );
         }
     }
@@ -443,12 +443,12 @@ mod tests {
             assert_eq!(
                 token.t, t,
                 "Expected token {} got {} at {}:{}",
-                t, token.t, token.line, token.position
+                t, token.t, token.line, token.column
             );
             assert_eq!(
                 token.literal, literal,
                 "Expected literal {} got {} at {}:{}",
-                literal, token.literal, token.line, token.position
+                literal, token.literal, token.line, token.column
             );
         }
     }

@@ -22,9 +22,7 @@ impl Precedence {
             TokenType::LT | TokenType::GT | TokenType::LTE | TokenType::GTE => Self::LGT,
             TokenType::LSHIFT | TokenType::RSHIFT => Self::BITWISE,
             TokenType::PLUS | TokenType::MINUS => Self::SUM,
-            TokenType::ASTERISK | TokenType::FORWARDSLASH | TokenType::PERCENT => {
-                Self::PRODUCT
-            }
+            TokenType::ASTERISK | TokenType::FORWARDSLASH | TokenType::PERCENT => Self::PRODUCT,
             TokenType::EXPONENT => Self::EXPONENT,
             TokenType::INCR | TokenType::DECR | TokenType::BANG => Self::PREFIX,
             TokenType::LPAREN => Self::CALL,
@@ -38,4 +36,3 @@ impl Display for Precedence {
         write!(f, "{:?}", self)
     }
 }
-

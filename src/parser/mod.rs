@@ -21,7 +21,7 @@ use crate::{
         Token,
     },
     traits::{expression::Expression, statement::Statement},
-    types::{ExpressionResult, InfixParseFn, PrefixParseFn, Result, StatementResult},
+    types::{ASTExpressionResult, InfixParseFn, PrefixParseFn, Result, ASTStatementResult, ASTExpression, ASTStatement},
 };
 
 pub struct Parser<'a> {
@@ -220,7 +220,7 @@ impl<'a> Parser<'a> {
         Ok(new_program)
     }
 
-    fn parse_statement(&mut self) -> StatementResult {
+    fn parse_statement(&mut self) -> ASTStatementResult {
         match self.current_token.t {
             TokenType::KEYWORD(KeywordTokenType::LET)
             | TokenType::KEYWORD(KeywordTokenType::CONST)
@@ -230,24 +230,24 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_identifier(&mut self) -> ExpressionResult {
+    fn parse_identifier(&mut self) -> ASTExpressionResult {
         self.dbg_trace_inline("parse_identifier");
         Ok(Box::new(Identifier::from_token(&self.current_token)))
     }
 
-    fn parse_boolean(&mut self) -> ExpressionResult {
+    fn parse_boolean(&mut self) -> ASTExpressionResult {
         self.dbg_trace_inline("parse_boolean");
         Ok(Box::new(Boolean::from_token(&self.current_token)))
     }
 
-    fn parse_integer_literal(&mut self) -> ExpressionResult {
+    fn parse_integer_literal(&mut self) -> ASTExpressionResult {
         self.dbg_trace_inline(
             format!("parse_integer_literal: {}", self.current_token.literal).as_str(),
         );
         Ok(Box::new(IntegerLiteral::from_token(&self.current_token)))
     }
 
-    fn parse_if_expression(&mut self) -> ExpressionResult {
+    fn parse_if_expression(&mut self) -> ASTExpressionResult {
         self.dbg_trace(format!("parse_if_expression: {}", self.current_token.literal).as_str());
 
         let current_token = self.current_token.clone(); // if
@@ -333,7 +333,7 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    fn parse_function(&mut self) -> ExpressionResult {
+    fn parse_function(&mut self) -> ASTExpressionResult {
         self.dbg_trace("parse_if_expression");
 
         let current_token = self.current_token.clone(); // fn
@@ -461,14 +461,14 @@ impl<'a> Parser<'a> {
         Ok(parameters)
     }
 
-    fn parse_call_expression(&mut self, function: Box<dyn Expression>) -> ExpressionResult {
+    fn parse_call_expression(&mut self, function: ASTExpression) -> ASTExpressionResult {
         let args = self.parse_call_arguments()?;
         let call_exp = CallExpression::new(self.current_token.clone(), function, args);
         Ok(Box::new(call_exp))
     }
 
-    fn parse_call_arguments(&mut self) -> Result<Vec<Box<dyn Expression>>> {
-        let mut args: Vec<Box<dyn Expression>> = Vec::new();
+    fn parse_call_arguments(&mut self) -> Result<Vec<ASTExpression>> {
+        let mut args: Vec<ASTExpression> = Vec::new();
 
         if self.peek_token_is(TokenType::RPAREN) {
             self.advance_token();
@@ -506,7 +506,7 @@ impl<'a> Parser<'a> {
     }
 
     // double cloning eww :/
-    fn parse_prefix_expression(&mut self) -> ExpressionResult {
+    fn parse_prefix_expression(&mut self) -> ASTExpressionResult {
         self.dbg_trace(format!("parse_prefix_expression: {}", self.current_token.t).as_str());
 
         let current_token = self.current_token.clone();
@@ -522,7 +522,7 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    fn parse_infix_expression(&mut self, lhs: Box<dyn Expression>) -> ExpressionResult {
+    fn parse_infix_expression(&mut self, lhs: ASTExpression) -> ASTExpressionResult {
         self.dbg_trace(format!("parse_infix_expression: {}", self.current_token.t).as_str());
 
         let precedence = self.current_precedence();
@@ -543,7 +543,7 @@ impl<'a> Parser<'a> {
     fn parse_block_statement(&mut self) -> Result<BlockStatement> {
         self.dbg_trace("parse_block_statement");
         let current_token = &self.current_token.clone();
-        let mut statements: Vec<Box<dyn Statement>> = Vec::new();
+        let mut statements: Vec<ASTStatement> = Vec::new();
 
         self.advance_token();
 
@@ -571,7 +571,7 @@ impl<'a> Parser<'a> {
         Ok(stmt)
     }
 
-    fn parse_return_statement(&mut self) -> StatementResult {
+    fn parse_return_statement(&mut self) -> ASTStatementResult {
         self.dbg_trace("parse_return_statement");
         let current_token = &self.current_token.clone();
 
@@ -607,7 +607,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expression_statement(&mut self) -> StatementResult {
+    fn parse_expression_statement(&mut self) -> ASTStatementResult {
         self.dbg_trace("parse_expression_statement");
         match self.parse_expression(Precedence::LOWEST) {
             Ok(expression) => {
@@ -624,7 +624,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expression(&mut self, precedence: Precedence) -> ExpressionResult {
+    fn parse_expression(&mut self, precedence: Precedence) -> ASTExpressionResult {
         self.dbg_trace("parse_expression");
         if let Some(prefix_fn) = self.prefix_fns.get(&self.current_token.t) {
             let mut left_exp = prefix_fn(self)?;
@@ -667,7 +667,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_grouped_expression(&mut self) -> ExpressionResult {
+    fn parse_grouped_expression(&mut self) -> ASTExpressionResult {
         self.dbg_trace("parse_grouped_expression");
         self.advance_token();
 
@@ -691,7 +691,7 @@ impl<'a> Parser<'a> {
         exp
     }
 
-    fn parse_declare_statement(&mut self) -> StatementResult {
+    fn parse_declare_statement(&mut self) -> ASTStatementResult {
         let current_token = &self.current_token.clone();
         self.dbg_trace(
             format!(

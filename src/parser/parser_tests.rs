@@ -16,6 +16,7 @@ pub mod tests {
         parser::Parser,
         token::token_type::{KeywordTokenType, TokenType},
         traits::{expression::Expression, node::Node, statement::Statement},
+        types::{ASTExpression, ASTStatement},
     };
 
     #[test]
@@ -124,8 +125,12 @@ pub mod tests {
 
         let mut lexer = Lexer::new(CODE);
         let mut parser = Parser::new(&mut lexer);
-        let expected_values: Vec<&str> =
-            vec!["return x;", "return (y + b);", "return;", "return ((10 * 2) * ((54 / 2) % 8));"];
+        let expected_values: Vec<&str> = vec![
+            "return x;",
+            "return (y + b);",
+            "return;",
+            "return ((10 * 2) * ((54 / 2) % 8));",
+        ];
 
         let program = parser.parse().unwrap();
 
@@ -394,9 +399,7 @@ pub mod tests {
         }
     }
 
-    fn test_downcast_expression_statement_helper(
-        statement: &Box<dyn Statement>,
-    ) -> &ExpressionStatement {
+    fn test_downcast_expression_statement_helper(statement: &ASTStatement) -> &ExpressionStatement {
         match statement.as_any().downcast_ref::<ExpressionStatement>() {
             Some(exp_stmt) => exp_stmt,
             None => {
@@ -405,7 +408,7 @@ pub mod tests {
         }
     }
 
-    fn downcast_expression_helper<T: 'static>(exp: &Box<dyn Expression>) -> &T {
+    fn downcast_expression_helper<T: 'static>(exp: &ASTExpression) -> &T {
         match exp.as_any().downcast_ref::<T>() {
             Some(t_exp) => t_exp,
             None => {
@@ -417,7 +420,7 @@ pub mod tests {
         }
     }
 
-    fn downcast_statement_helper<T: 'static>(stmt: &Box<dyn Statement>) -> &T {
+    fn downcast_statement_helper<T: 'static>(stmt: &ASTStatement) -> &T {
         match stmt.as_any().downcast_ref::<T>() {
             Some(t_stmt) => t_stmt,
             None => {
@@ -447,24 +450,21 @@ pub mod tests {
         assert_eq!(rhs, prefix_exp.rhs.to_string());
     }
 
-    fn test_identifier_helper(exp: &Box<dyn Expression>, value: String) -> &Identifier {
+    fn test_identifier_helper(exp: &ASTExpression, value: String) -> &Identifier {
         let ident = downcast_expression_helper::<Identifier>(exp);
         assert_eq!(ident.value, value);
         assert_eq!(ident.get_token_literal(), value);
         ident
     }
 
-    fn test_boolean_helper(exp: &Box<dyn Expression>, value: bool) -> &Boolean {
+    fn test_boolean_helper(exp: &ASTExpression, value: bool) -> &Boolean {
         let boolean = downcast_expression_helper::<Boolean>(exp);
         assert_eq!(boolean.value, value);
         assert_eq!(boolean.get_token_literal(), value.to_string());
         boolean
     }
 
-    fn test_integer_literal_helper(
-        exp: &Box<dyn Expression>,
-        expected_value: i64,
-    ) -> &IntegerLiteral {
+    fn test_integer_literal_helper(exp: &ASTExpression, expected_value: i64) -> &IntegerLiteral {
         match exp.as_any().downcast_ref::<IntegerLiteral>() {
             Some(integer_literal) => {
                 assert_eq!(

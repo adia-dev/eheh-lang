@@ -2,17 +2,17 @@ use std::any::Any;
 
 use crate::{
     token::Token,
-    traits::{node::Node, statement::Statement},
+    traits::{node::Node, statement::Statement}, types::ASTStatement,
 };
 
 #[derive(Debug)]
 pub struct BlockStatement {
     pub token: Token,
-    pub statements: Vec<Box<dyn Statement>>,
+    pub statements: Vec<ASTStatement>,
 }
 
 impl BlockStatement {
-    pub fn new(token: Token, statements: Vec<Box<dyn Statement>>) -> Self {
+    pub fn new(token: Token, statements: Vec<ASTStatement>) -> Self {
         Self { token, statements }
     }
 }

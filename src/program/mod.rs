@@ -1,8 +1,8 @@
-use crate::traits::{node::Node, statement::Statement};
+use crate::{traits::{node::Node, statement::Statement}, types::ASTStatement};
 
 #[derive(Debug)]
 pub struct Program {
-    pub statements: Vec<Box<dyn Statement>>,
+    pub statements: Vec<ASTStatement>,
 }
 
 impl Program {

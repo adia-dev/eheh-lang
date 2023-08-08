@@ -6,6 +6,7 @@ use rlpl::RLPL;
 mod ast;
 mod lexer;
 mod parser;
+// mod error;
 mod program;
 mod repl;
 mod rlpl;

@@ -1,20 +1,20 @@
 use crate::{
     token::Token,
-    traits::{expression::Expression, node::Node},
+    traits::{expression::Expression, node::Node}, types::ASTExpression,
 };
 
 #[derive(Debug)]
 pub struct CallExpression {
     pub token: Token,
-    pub function: Box<dyn Expression>,
-    pub args: Vec<Box<dyn Expression>>,
+    pub function: ASTExpression,
+    pub args: Vec<ASTExpression>,
 }
 
 impl CallExpression {
     pub fn new(
         token: Token,
-        function: Box<dyn Expression>,
-        args: Vec<Box<dyn Expression>>,
+        function: ASTExpression,
+        args: Vec<ASTExpression>,
     ) -> Self {
         Self {
             token,

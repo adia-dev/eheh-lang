@@ -1,17 +1,17 @@
 use crate::{
     token::Token,
-    traits::{expression::Expression, node::Node},
+    traits::{expression::Expression, node::Node}, types::ASTExpression,
 };
 
 #[derive(Debug)]
 pub struct PrefixExpression {
     pub token: Token,
     pub operator: String,
-    pub rhs: Box<dyn Expression>,
+    pub rhs: ASTExpression,
 }
 
 impl PrefixExpression {
-    pub fn new(token: Token, operator: String, rhs: Box<dyn Expression>) -> Self {
+    pub fn new(token: Token, operator: String, rhs: ASTExpression) -> Self {
         Self {
             token,
             operator,

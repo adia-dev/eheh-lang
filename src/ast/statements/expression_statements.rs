@@ -2,17 +2,17 @@ use std::any::Any;
 
 use crate::{
     token::Token,
-    traits::{expression::Expression, node::Node, statement::Statement},
+    traits::{expression::Expression, node::Node, statement::Statement}, types::ASTExpression,
 };
 
 #[derive(Debug)]
 pub struct ExpressionStatement {
     pub token: Token,
-    pub expression: Box<dyn Expression>,
+    pub expression: ASTExpression,
 }
 
 impl ExpressionStatement {
-    pub fn new(token: Token, expression: Box<dyn Expression>) -> Self {
+    pub fn new(token: Token, expression: ASTExpression) -> Self {
         Self { token, expression }
     }
 }

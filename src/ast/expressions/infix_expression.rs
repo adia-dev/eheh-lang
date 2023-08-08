@@ -1,22 +1,22 @@
 use crate::{
     token::Token,
-    traits::{expression::Expression, node::Node},
+    traits::{expression::Expression, node::Node}, types::ASTExpression,
 };
 
 #[derive(Debug)]
 pub struct InfixExpression {
     pub token: Token,
-    pub lhs: Box<dyn Expression>,
+    pub lhs: ASTExpression,
     pub operator: String,
-    pub rhs: Box<dyn Expression>,
+    pub rhs: ASTExpression,
 }
 
 impl InfixExpression {
     pub fn new(
         token: Token,
-        lhs: Box<dyn Expression>,
+        lhs: ASTExpression,
         operator: String,
-        rhs: Box<dyn Expression>,
+        rhs: ASTExpression,
     ) -> Self {
         Self {
             token,

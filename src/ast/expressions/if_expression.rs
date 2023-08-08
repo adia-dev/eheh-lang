@@ -1,12 +1,12 @@
 use crate::{
     token::Token,
-    traits::{expression::Expression, node::Node}, ast::statements::block_statement::BlockStatement,
+    traits::{expression::Expression, node::Node}, ast::statements::block_statement::BlockStatement, types::ASTExpression,
 };
 
 #[derive(Debug)]
 pub struct IfExpression {
     pub token: Token,
-    pub condition: Box<dyn Expression>,
+    pub condition: ASTExpression,
     pub consequence: BlockStatement,
     pub alternative: Option<BlockStatement>,
 }
@@ -14,7 +14,7 @@ pub struct IfExpression {
 impl IfExpression {
     pub fn new(
         token: Token,
-        condition: Box<dyn Expression>,
+        condition: ASTExpression,
         consequence: BlockStatement,
         alternative: Option<BlockStatement>,
     ) -> Self {

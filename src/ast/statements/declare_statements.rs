@@ -3,7 +3,7 @@ use std::any::Any;
 use crate::{
     ast::expressions::identifier::Identifier,
     token::Token,
-    traits::{expression::Expression, node::Node, statement::Statement},
+    traits::{expression::Expression, node::Node, statement::Statement}, types::ASTExpression,
 };
 
 #[derive(Debug)]
@@ -11,7 +11,7 @@ pub struct DeclareStatement {
     pub token: Token,
     pub name: Identifier,
     pub type_specifier: Option<String>,
-    pub value: Option<Box<dyn Expression>>,
+    pub value: Option<ASTExpression>,
 }
 
 impl DeclareStatement {
@@ -19,7 +19,7 @@ impl DeclareStatement {
         token: Token,
         name: Identifier,
         type_specifier: Option<String>,
-        value: Option<Box<dyn Expression>>,
+        value: Option<ASTExpression>,
     ) -> Self {
         Self {
             token,

@@ -3,9 +3,10 @@ use crate::token::{
     Token,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Lexer {
     pub input: Vec<char>,
+    pub raw_input: String,
     pub line: usize,
     pub last_new_line: usize,
     pub position: usize,
@@ -17,16 +18,27 @@ impl Lexer {
     pub fn new(input: &str) -> Self {
         let mut new_lexer = Self {
             input: input.chars().into_iter().collect(),
+            raw_input: input.to_owned(),
             position: 0,
             next_position: 0,
             c: '\0',
-            line: 0,
+            line: 1,
             last_new_line: 0,
         };
 
         new_lexer.advance();
 
         new_lexer
+    }
+
+    pub fn get_line(&self, n: usize) -> Option<String> {
+        let splitted_code = self.raw_input.split('\n').collect::<Vec<&str>>();
+
+        if n - 1 >= splitted_code.len() {
+            None
+        } else {
+            Some(splitted_code[n - 1].to_string())
+        }
     }
 
     pub fn scan(&mut self) -> Token {
@@ -36,7 +48,8 @@ impl Lexer {
             TokenType::ILLEGAL,
             self.c.to_string(),
             self.line,
-            self.position - self.last_new_line,
+            self.position - self.last_new_line + 1,
+            Some("src/main.rs".to_string()),
         );
 
         match self.c {

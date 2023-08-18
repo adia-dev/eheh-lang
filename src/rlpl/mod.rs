@@ -65,7 +65,7 @@ impl RLPL {
 
         if !parser.errors.is_empty() {
             for error in &parser.errors {
-                println!("{}", error);
+                print!("{}", error);
             }
             return;
         }

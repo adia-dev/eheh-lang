@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use crate::{
     ast::{
@@ -14,6 +14,7 @@ use crate::{
             expression_statements::ExpressionStatement, return_statements::ReturnStatement,
         },
     },
+    error::parser_error::{ParserError, ParserErrorCode},
     lexer::Lexer,
     program::Program,
     token::{
@@ -22,7 +23,7 @@ use crate::{
     },
     types::{
         ASTExpression, ASTExpressionResult, ASTStatement, ASTStatementResult, InfixParseFn,
-        PrefixParseFn, Result,
+        ParserResult, PrefixParseFn, Result,
     },
 };
 
@@ -30,12 +31,19 @@ pub struct Parser<'a> {
     pub lexer: &'a mut Lexer,
     current_token: Token,
     peek_token: Token,
-    pub errors: Vec<String>,
+    pub errors: Vec<ParserError>,
     pub warnings: Vec<String>,
     prefix_fns: HashMap<TokenType, PrefixParseFn<'a>>,
     infix_fns: HashMap<TokenType, InfixParseFn<'a>>,
+    current_delimiter: Option<TokenType>,
     dbg_indent: usize,
     dbg_tracing_enabled: bool,
+}
+
+impl<'a> Debug for Parser<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{:?}", self)
+    }
 }
 
 impl<'a> Parser<'a> {
@@ -53,6 +61,7 @@ impl<'a> Parser<'a> {
             warnings: Vec::new(),
             prefix_fns,
             infix_fns,
+            current_delimiter: None,
             dbg_indent: 0,
             dbg_tracing_enabled: false,
         };
@@ -141,6 +150,7 @@ impl<'a> Parser<'a> {
     fn advance_token(&mut self) {
         self.current_token = self.peek_token.clone();
         self.peek_token = self.lexer.scan();
+        self.maybe_save_current_delimiter();
     }
 
     fn peek_token_is(&self, t: TokenType) -> bool {
@@ -159,11 +169,20 @@ impl<'a> Parser<'a> {
         Precedence::from_token_type(&self.current_token.t)
     }
 
-    fn unexpected_error(&mut self, expected: &str, got: Token) {
-        self.errors.push(format!(
-            "Expected token to be {}, got {} instead at {}:{}",
-            expected, got.t, got.line, got.column
-        ))
+    fn maybe_save_current_delimiter(&mut self) {
+        self.current_delimiter = match self.current_token.t {
+            TokenType::COMMENTBLOCK => Some(TokenType::COMMENTBLOCK),
+            TokenType::DQUOTE => Some(TokenType::DQUOTE),
+            TokenType::LBRACE => Some(TokenType::LBRACE),
+            TokenType::LBRACK => Some(TokenType::LBRACK),
+            TokenType::LPAREN => Some(TokenType::LPAREN),
+            TokenType::PIPE => Some(TokenType::PIPE),
+            TokenType::RBRACE => Some(TokenType::RBRACE),
+            TokenType::RBRACK => Some(TokenType::RBRACK),
+            TokenType::RPAREN => Some(TokenType::RPAREN),
+            TokenType::SQUOTE => Some(TokenType::SQUOTE),
+            _ => None,
+        }
     }
 
     fn expect_token(&mut self, t: TokenType) -> bool {
@@ -171,10 +190,6 @@ impl<'a> Parser<'a> {
             self.advance_token();
             true
         } else {
-            self.errors.push(format!(
-                "Expected token to be {}, got {} instead at {}:{}",
-                t, self.current_token.t, self.current_token.line, self.current_token.column
-            ));
             false
         }
     }
@@ -184,10 +199,6 @@ impl<'a> Parser<'a> {
             self.advance_token();
             true
         } else {
-            self.errors.push(format!(
-                "Expected token to be {}, got {} instead at {}:{}",
-                t, self.peek_token.t, self.peek_token.line, self.peek_token.column
-            ));
             false
         }
     }
@@ -202,6 +213,19 @@ impl<'a> Parser<'a> {
                     self.advance_token();
                     continue;
                 }
+                TokenType::LBRACE => match self.parse_block_statement() {
+                    Ok(stmt) => {
+                        new_program.statements.push(Box::new(stmt));
+                        self.dbg_untrace("parse_block_statement");
+                    }
+                    Err(err) => {
+                        self.errors.push(err);
+                        let current_line = self.current_token.line;
+                        while (current_line == self.current_token.line) {
+                            self.advance_token();
+                        }
+                    }
+                },
                 _ => {
                     self.dbg_trace(
                         format!("parse_statement {}", new_program.statements.len() + 1).as_str(),
@@ -211,7 +235,13 @@ impl<'a> Parser<'a> {
                             new_program.statements.push(stmt);
                             self.dbg_untrace("parse_statement");
                         }
-                        Err(_err) => (),
+                        Err(err) => {
+                            self.errors.push(err);
+                            let current_line = self.current_token.line;
+                            while (current_line == self.current_token.line) {
+                                self.advance_token();
+                            }
+                        }
                     }
 
                     self.advance_token();
@@ -249,6 +279,7 @@ impl<'a> Parser<'a> {
         Ok(Box::new(IntegerLiteral::from_token(&self.current_token)))
     }
 
+    // TODO: REFACTOR THIS DISGUSTING FUNCTION PLEASSEE
     fn parse_if_expression(&mut self) -> ASTExpressionResult {
         self.dbg_trace(format!("parse_if_expression: {}", self.current_token.literal).as_str());
 
@@ -260,46 +291,84 @@ impl<'a> Parser<'a> {
             self.advance_token();
             self.warn("unnecessary parentheses around `if` condition");
             surrounded_by_paren = true;
+        } else if !self.peek_token_is(TokenType::IDENT)
+            && !self.peek_token_is(TokenType::KEYWORD(KeywordTokenType::TRUE))
+            && !self.peek_token_is(TokenType::KEYWORD(KeywordTokenType::FALSE))
+        {
+            return Err(ParserError {
+                code: ParserErrorCode::UnexpectedToken {
+                    token: self.peek_token.clone(),
+                    expected_token_types: vec![
+                        TokenType::IDENT,
+                        TokenType::LPAREN,
+                        TokenType::KEYWORD(KeywordTokenType::TRUE),
+                        TokenType::KEYWORD(KeywordTokenType::FALSE),
+                    ],
+                    context: self.lexer.get_line(self.current_token.line),
+                },
+                source: None,
+            });
         }
 
         if surrounded_by_paren && self.peek_token_is(TokenType::RPAREN)
             || self.peek_token_is(TokenType::LBRACE)
         {
-            self.errors.push("Parsing Error: If expressions need to contain a condition, maybe you forgot it.\nreminder: if (cond) { ... } <optional> else { ... }".to_string());
-
-            return Err("Parsing Error: If expressions need to contain a condition, maybe you forgot it.\nrto_stringeminder: if (cond) { ... } <optional> else { ... }".into());
+            return Err(ParserError {
+                code: ParserErrorCode::MissingIfCondition {
+                    token: self.current_token.clone(),
+                    context: self.lexer.get_line(self.current_token.line),
+                },
+                source: None,
+            });
         }
 
         self.advance_token(); // first token of the condition expression
 
         let condition = self.parse_expression(Precedence::LOWEST)?;
 
-        self.advance_token();
-
-        if surrounded_by_paren && !self.expect_token(TokenType::RPAREN) {
-            self.errors.push(format!(
-                "Parsing Error: Could not parse an if expression, expected token RPAREN, got {}",
-                self.current_token.t
-            ));
-
-            return Err(format!(
-                "Parsing Error: Could not parse an if expression, expected token RPAREN, got {}",
-                self.current_token.t
-            )
-            .into());
+        if !surrounded_by_paren && self.peek_token_is(TokenType::RPAREN) {
+            return Err(ParserError {
+                code: ParserErrorCode::DelimiterMismatch {
+                    token: self.current_token.clone(),
+                    expected_delimiter: TokenType::LPAREN,
+                    current_delimiter: self.current_delimiter.clone(),
+                    context: Some(vec![self
+                        .lexer
+                        .get_line(self.current_token.line)
+                        .unwrap_or(String::new())]),
+                },
+                source: None,
+            });
+        } else if surrounded_by_paren && !self.peek_token_is(TokenType::RPAREN) {
+            return Err(ParserError {
+                code: ParserErrorCode::DelimiterMismatch {
+                    token: self.peek_token.clone(),
+                    expected_delimiter: TokenType::RPAREN,
+                    current_delimiter: self.current_delimiter.clone(),
+                    context: Some(vec![self
+                        .lexer
+                        .get_line(self.peek_token.line)
+                        .unwrap_or(String::new())]),
+                },
+                source: None,
+            });
         }
 
-        if !self.current_token_is(TokenType::LBRACE) {
-            self.errors.push(format!(
-                "Parsing Error: Could not parse an if expression, expected token LBRACE, got {}",
-                self.current_token.t
-            ));
+        if surrounded_by_paren {
+            self.advance_token();
+        }
 
-            return Err(format!(
-                "Parsing Error: Could not parse an if expression, expected token LBRACE, got {}",
-                self.current_token.t
-            )
-            .into());
+        self.advance_token(); // first token of the condition expression
+
+        if !self.current_token_is(TokenType::LBRACE) {
+            return Err(ParserError {
+                code: ParserErrorCode::UnexpectedToken {
+                    token: self.current_token.clone(),
+                    expected_token_types: vec![TokenType::LBRACE],
+                    context: self.lexer.get_line(self.current_token.line),
+                },
+                source: None,
+            });
         }
 
         let consequence = self.parse_block_statement()?;
@@ -348,16 +417,14 @@ impl<'a> Parser<'a> {
         }
 
         if !self.expect_peek_token_to_be(TokenType::LPAREN) {
-            return self.error(
-                format!(
-                    "Expected token to be {}, got {} instead at {}:{}",
-                    TokenType::LPAREN,
-                    self.peek_token.t,
-                    self.peek_token.line,
-                    self.peek_token.column
-                )
-                .as_str(),
-            );
+            return Err(ParserError {
+                code: ParserErrorCode::UnexpectedToken {
+                    token: self.current_token.clone(),
+                    expected_token_types: vec![TokenType::LPAREN],
+                    context: self.lexer.get_line(self.peek_token.line),
+                },
+                source: None,
+            });
         }
 
         let parameters: Vec<TypedIdentifier> = self.parse_function_parameters()?;
@@ -368,23 +435,27 @@ impl<'a> Parser<'a> {
             self.advance_token();
 
             if !self.expect_peek_token_to_be(TokenType::IDENT) {
-                return self.error("The function type has not been declared properly, expected: fn(...) `-> T` { ... }");
+                return Err(ParserError {
+                    code: ParserErrorCode::MissingFnReturnType {
+                        token: self.current_token.clone(),
+                        context: self.lexer.get_line(self.current_token.line),
+                    },
+                    source: None,
+                });
             }
 
             return_type = Some(Identifier::from_token(&self.current_token));
         }
 
         if !self.expect_peek_token_to_be(TokenType::LBRACE) {
-            return self.error(
-                format!(
-                    "Expected token to be {}, got {} instead at {}:{}",
-                    TokenType::LBRACE,
-                    self.peek_token.t,
-                    self.peek_token.line,
-                    self.peek_token.column
-                )
-                .as_str(),
-            );
+            return Err(ParserError {
+                code: ParserErrorCode::UnexpectedToken {
+                    token: self.peek_token.clone(),
+                    expected_token_types: vec![TokenType::LBRACE, TokenType::ARROW],
+                    context: self.lexer.get_line(self.peek_token.line),
+                },
+                source: None,
+            });
         }
 
         let body = self.parse_block_statement()?;
@@ -404,7 +475,7 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    fn parse_function_parameters(&mut self) -> Result<Vec<TypedIdentifier>> {
+    fn parse_function_parameters(&mut self) -> ParserResult<Vec<TypedIdentifier>> {
         let mut parameters: Vec<TypedIdentifier> = Vec::new();
 
         if self.peek_token_is(TokenType::RPAREN) {
@@ -448,16 +519,14 @@ impl<'a> Parser<'a> {
         }
 
         if !self.expect_peek_token_to_be(TokenType::RPAREN) {
-            return self.error(
-                format!(
-                    "Expected token to be {}, got {} instead at {}:{}",
-                    TokenType::RPAREN,
-                    self.peek_token.t,
-                    self.peek_token.line,
-                    self.peek_token.column
-                )
-                .as_str(),
-            );
+            return Err(ParserError {
+                code: ParserErrorCode::UnexpectedToken {
+                    token: self.current_token.clone(),
+                    expected_token_types: vec![TokenType::RPAREN],
+                    context: self.lexer.get_line(self.peek_token.line),
+                },
+                source: None,
+            });
         }
 
         Ok(parameters)
@@ -469,7 +538,7 @@ impl<'a> Parser<'a> {
         Ok(Box::new(call_exp))
     }
 
-    fn parse_call_arguments(&mut self) -> Result<Vec<ASTExpression>> {
+    fn parse_call_arguments(&mut self) -> ParserResult<Vec<ASTExpression>> {
         let mut args: Vec<ASTExpression> = Vec::new();
 
         if self.peek_token_is(TokenType::RPAREN) {
@@ -492,16 +561,14 @@ impl<'a> Parser<'a> {
         }
 
         if !self.expect_peek_token_to_be(TokenType::RPAREN) {
-            return self.error(
-                format!(
-                    "Expected token to be {}, got {} instead at {}:{}",
-                    TokenType::RPAREN,
-                    self.peek_token.t,
-                    self.peek_token.line,
-                    self.peek_token.column
-                )
-                .as_str(),
-            );
+            return Err(ParserError {
+                code: ParserErrorCode::UnexpectedToken {
+                    token: self.current_token.clone(),
+                    expected_token_types: vec![TokenType::RPAREN],
+                    context: self.lexer.get_line(self.peek_token.line),
+                },
+                source: None,
+            });
         }
 
         Ok(args)
@@ -542,7 +609,7 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    fn parse_block_statement(&mut self) -> Result<BlockStatement> {
+    fn parse_block_statement(&mut self) -> ParserResult<BlockStatement> {
         self.dbg_trace("parse_block_statement");
         let current_token = &self.current_token.clone();
         let mut statements: Vec<ASTStatement> = Vec::new();
@@ -553,7 +620,15 @@ impl<'a> Parser<'a> {
             if self.current_token_is(TokenType::RBRACE) {
                 break;
             } else if self.current_token_is(TokenType::EOF) {
-                self.unexpected_error("RBRACE", self.current_token.clone());
+                return Err(ParserError {
+                    code: ParserErrorCode::UnexpectedToken {
+                        token: self.current_token.clone(),
+                        expected_token_types: vec![TokenType::RPAREN],
+                        context: self.lexer.get_line(self.current_token.line),
+                    },
+                    source: None,
+                });
+
                 break;
             }
 
@@ -588,16 +663,14 @@ impl<'a> Parser<'a> {
         match self.parse_expression(Precedence::LOWEST) {
             Ok(ret_val) => {
                 if !self.expect_peek_token_to_be(TokenType::SEMICOLON) {
-                    return self.error(
-                        format!(
-                            "Parsing Error: Expected token {} got {} at {}:{}",
-                            TokenType::IDENT,
-                            self.peek_token.t,
-                            self.peek_token.line,
-                            self.peek_token.column,
-                        )
-                        .as_str(),
-                    );
+                    return Err(ParserError {
+                        code: ParserErrorCode::UnexpectedToken {
+                            token: self.current_token.clone(),
+                            expected_token_types: vec![TokenType::IDENT],
+                            context: self.lexer.get_line(self.peek_token.line),
+                        },
+                        source: None,
+                    });
                 }
                 self.dbg_untrace("parse_return_statement");
                 Ok(Box::new(ReturnStatement::new(
@@ -605,7 +678,9 @@ impl<'a> Parser<'a> {
                     Some(ret_val),
                 )))
             }
-            Err(err) => self.error(err.to_string().as_str()),
+            Err(err) => {
+                return Err(err);
+            }
         }
     }
 
@@ -656,16 +731,13 @@ impl<'a> Parser<'a> {
             self.dbg_untrace("parse_expression");
             Ok(left_exp)
         } else {
-            self.errors.push(format!(
-                "Parsing Error: Could not find a prefix parsing function for {}",
-                self.current_token.t
-            ));
-
-            Err(format!(
-                "Parsing Error: Could not find a prefix parsing function for {}",
-                self.current_token.t
-            )
-            .into())
+            Err(ParserError {
+                code: ParserErrorCode::UnknownPrefixToken {
+                    token: self.current_token.clone(),
+                    context: self.lexer.get_line(self.current_token.line),
+                },
+                source: None,
+            })
         }
     }
 
@@ -676,16 +748,14 @@ impl<'a> Parser<'a> {
         let exp = self.parse_expression(Precedence::LOWEST);
 
         if !self.peek_token_is(TokenType::RPAREN) {
-            self.errors.push(format!(
-                "Parsing Error: Could not parse a grouped expression, expected token RPAREN, got {}",
-                self.current_token.t
-            ));
-
-            return Err(format!(
-                "Parsing Error: Could not parse a grouped expression, expected token RPAREN, got {}",
-                self.current_token.t
-            )
-            .into());
+            return Err(ParserError {
+                code: ParserErrorCode::UnexpectedToken {
+                    token: self.current_token.clone(),
+                    expected_token_types: vec![TokenType::RPAREN],
+                    context: self.lexer.get_line(self.current_token.line),
+                },
+                source: None,
+            });
         }
 
         self.advance_token();
@@ -704,14 +774,14 @@ impl<'a> Parser<'a> {
         );
 
         if !self.expect_peek_token_to_be(TokenType::IDENT) {
-            return Err(format!(
-                "Parsing Error: Expected token {} got {} at {}:{}",
-                TokenType::IDENT,
-                self.peek_token.t,
-                self.peek_token.line,
-                self.peek_token.column,
-            )
-            .into());
+            return Err(ParserError {
+                code: ParserErrorCode::UnexpectedToken {
+                    token: self.current_token.clone(),
+                    expected_token_types: vec![TokenType::IDENT],
+                    context: self.lexer.get_line(self.peek_token.line),
+                },
+                source: None,
+            });
         }
 
         let identifier = Identifier::from_token(&self.current_token);
@@ -747,16 +817,14 @@ impl<'a> Parser<'a> {
         match self.parse_expression(Precedence::LOWEST) {
             Ok(val) => {
                 if !self.expect_peek_token_to_be(TokenType::SEMICOLON) {
-                    return self.error(
-                        format!(
-                            "Parsing Error: Expected token {} got {} at {}:{}",
-                            TokenType::IDENT,
-                            self.peek_token.t,
-                            self.peek_token.line,
-                            self.peek_token.column,
-                        )
-                        .as_str(),
-                    );
+                    return Err(ParserError {
+                        code: ParserErrorCode::UnexpectedToken {
+                            token: self.current_token.clone(),
+                            expected_token_types: vec![TokenType::SEMICOLON],
+                            context: self.lexer.get_line(self.peek_token.line),
+                        },
+                        source: None,
+                    });
                 }
                 self.dbg_untrace(
                     format!(
@@ -772,7 +840,7 @@ impl<'a> Parser<'a> {
                     Some(val),
                 )))
             }
-            Err(err) => self.error(err.to_string().as_str()),
+            Err(err) => Err(err),
         }
     }
 

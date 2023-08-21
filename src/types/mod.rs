@@ -1,5 +1,5 @@
 use crate::{
-    log::error::parser_error::ParserError,
+    log::error::ParserError,
     parser::Parser,
     traits::{expression::Expression, statement::Statement},
 };

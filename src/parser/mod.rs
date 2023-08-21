@@ -14,8 +14,8 @@ use crate::{
             expression_statements::ExpressionStatement, return_statements::ReturnStatement,
         },
     },
-    log::error::parser_error::{ParserError, ParserErrorCode},
     lexer::Lexer,
+    log::error::{ParserError, ParserErrorCode},
     program::Program,
     token::{
         token_type::{KeywordTokenType, TokenType},
@@ -221,7 +221,7 @@ impl<'a> Parser<'a> {
                     Err(err) => {
                         self.errors.push(err);
                         let current_line = self.current_token.line;
-                        while (current_line == self.current_token.line) {
+                        while current_line == self.current_token.line {
                             self.advance_token();
                         }
                     }
@@ -238,7 +238,7 @@ impl<'a> Parser<'a> {
                         Err(err) => {
                             self.errors.push(err);
                             let current_line = self.current_token.line;
-                            while (current_line == self.current_token.line) {
+                            while current_line == self.current_token.line {
                                 self.advance_token();
                             }
                         }

@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use rlpl::RLPL;
 
 mod ast;

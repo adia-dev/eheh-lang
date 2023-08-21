@@ -14,7 +14,7 @@ use crate::{
             expression_statements::ExpressionStatement, return_statements::ReturnStatement,
         },
     },
-    error::parser_error::{ParserError, ParserErrorCode},
+    log::error::parser_error::{ParserError, ParserErrorCode},
     lexer::Lexer,
     program::Program,
     token::{

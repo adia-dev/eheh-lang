@@ -289,7 +289,7 @@ impl Error for ParserError {
 #[cfg(test)]
 mod tests {
     use crate::{
-        error::parser_error::{ParserError, ParserErrorCode},
+        log::error::parser_error::{ParserError, ParserErrorCode},
         lexer::Lexer,
         parser::Parser,
         token::{token_type::TokenType, Token},
@@ -314,6 +314,13 @@ mod tests {
         let mut parser = Parser::new(&mut lexer);
         let program = parser.parse().unwrap();
 
-        assert_eq!(parser.errors.len(), 5);
+        // unexpected token: `x` -> `(`
+        // Unknown prefix token
+        // Delimiter mismatch (true -> missing `)`
+        // Unknown prefix token
+        let error_codes: Vec<usize> = vec![1000, 1001, 1004, 1000, 1001];
+        for (index, code) in error_codes.iter().enumerate() {
+            assert_eq!(parser.errors[index].code.id(), *code);
+        }
     }
 }

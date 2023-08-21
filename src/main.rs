@@ -1,17 +1,8 @@
-#![allow(dead_code)]
-#![allow(unused)]
-
-use std::any::type_name;
-
-use colored::Colorize;
-use error::parser_error::{ParserError, ParserErrorCode::UnexpectedToken};
 use rlpl::RLPL;
 
-use crate::token::{token_type::TokenType, Token};
-
 mod ast;
-mod error;
 mod lexer;
+mod log;
 mod parser;
 mod program;
 mod repl;

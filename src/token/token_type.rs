@@ -91,7 +91,7 @@ impl TokenType {
             TokenType::DOLLAR => "$".to_string(),
             TokenType::DOT => ".".to_string(),
             TokenType::DQUOTE => "\"".to_string(),
-            TokenType::EOF => "\0".to_string(),
+            TokenType::EOF => "<EOF>".to_string(),
             TokenType::EQ => "==".to_string(),
             TokenType::EXPONENT => "^".to_string(),
             TokenType::FORWARDSLASH => "/".to_string(),

@@ -15,7 +15,10 @@ use crate::{
         },
     },
     lexer::Lexer,
-    log::error::{ParserError, ParserErrorCode},
+    log::{
+        error::{ParserError, ParserErrorCode},
+        warning::ParserWarning,
+    },
     program::Program,
     token::{
         token_type::{KeywordTokenType, TokenType},
@@ -32,7 +35,7 @@ pub struct Parser<'a> {
     current_token: Token,
     peek_token: Token,
     pub errors: Vec<ParserError>,
-    pub warnings: Vec<String>,
+    pub warnings: Vec<ParserWarning>,
     prefix_fns: HashMap<TokenType, PrefixParseFn<'a>>,
     infix_fns: HashMap<TokenType, InfixParseFn<'a>>,
     current_delimiter: Option<TokenType>,
@@ -221,7 +224,7 @@ impl<'a> Parser<'a> {
                     Err(err) => {
                         self.errors.push(err);
                         let current_line = self.current_token.line;
-                        while current_line == self.current_token.line {
+                        while current_line == self.current_token.line && !self.current_token_is(TokenType::EOF) {
                             self.advance_token();
                         }
                     }
@@ -289,7 +292,10 @@ impl<'a> Parser<'a> {
         // optional parentheses around condition
         if self.peek_token_is(TokenType::LPAREN) {
             self.advance_token();
-            self.warn("unnecessary parentheses around `if` condition");
+            self.warn(ParserWarning::UnnecessaryParentheses {
+                token: self.peek_token.clone(),
+                context: vec![self.lexer.get_line(self.current_token.line).unwrap()],
+            });
             surrounded_by_paren = true;
         } else if !self.peek_token_is(TokenType::IDENT)
             && !self.peek_token_is(TokenType::KEYWORD(KeywordTokenType::TRUE))
@@ -324,6 +330,7 @@ impl<'a> Parser<'a> {
 
         self.advance_token(); // first token of the condition expression
 
+        let condition_token = self.current_token.clone();
         let condition = self.parse_expression(Precedence::LOWEST)?;
 
         if !surrounded_by_paren && self.peek_token_is(TokenType::RPAREN) {
@@ -371,27 +378,43 @@ impl<'a> Parser<'a> {
             });
         }
 
+        let consequence_token = self.current_token.clone();
         let consequence = self.parse_block_statement()?;
+
+        let mut alternative_token: Option<Token> = None;
         let mut alternative: Option<BlockStatement> = None;
 
         if self.peek_token_is(TokenType::KEYWORD(KeywordTokenType::ELSE)) {
             self.advance_token();
             self.advance_token();
+            alternative_token = Some(self.current_token.clone());
             alternative = Some(self.parse_block_statement()?);
         }
 
         if let Some(alt) = &alternative {
             if alt.statements.is_empty() && consequence.statements.is_empty() {
-                self.warn("the consequence and the alternative(s) of the if expression are empty, you might want to if expression remove it.");
+                self.warn(ParserWarning::EmptyIfExpression {
+                    token: consequence_token,
+                    context: vec![self.lexer.get_line(self.current_token.line).unwrap()],
+                });
             } else if consequence.statements.is_empty() {
-                self.warn("the consequence of the if statement is empty, you might want to invert the condition and remove the alternative statement like so:\n if !(cond) {{ ... }}");
+                self.warn(ParserWarning::EmptyIfConsequenceBranch {
+                    token: consequence_token,
+                    context: vec![self.lexer.get_line(self.current_token.line).unwrap()],
+                    has_alternative: true,
+                });
             } else if alt.statements.is_empty() {
-                self.warn("the alternative of the if statement is empty, you might want to remove the alternative statement like so:\n if (cond) {{ ... }}");
+                self.warn(ParserWarning::EmptyIfAlternativeBranch {
+                    token: alternative_token.unwrap(),
+                    context: vec![self.lexer.get_line(self.current_token.line).unwrap()],
+                });
             }
         } else if consequence.statements.is_empty() {
-            self.warn(
-                "the consequence of the if expression is empty, you might want to remove it.",
-            );
+            self.warn(ParserWarning::EmptyIfConsequenceBranch {
+                token: consequence_token,
+                context: vec![self.lexer.get_line(self.current_token.line).unwrap()],
+                has_alternative: false,
+            });
         }
 
         self.dbg_untrace("parse_if_expression");
@@ -461,7 +484,10 @@ impl<'a> Parser<'a> {
         let body = self.parse_block_statement()?;
 
         if body.statements.is_empty() {
-            self.warn("The function presents no body, it means the execution of that function results in nothing.\nYou might want to remove it.");
+            self.warn(ParserWarning::EmptyFunction {
+                token: self.current_token.clone(),
+                context: vec![self.lexer.get_line(self.current_token.line).unwrap()],
+            });
         }
 
         self.dbg_untrace("parse_function_expression");
@@ -623,13 +649,11 @@ impl<'a> Parser<'a> {
                 return Err(ParserError {
                     code: ParserErrorCode::UnexpectedToken {
                         token: self.current_token.clone(),
-                        expected_token_types: vec![TokenType::RPAREN],
+                        expected_token_types: vec![TokenType::RBRACE],
                         context: self.lexer.get_line(self.current_token.line),
                     },
                     source: None,
                 });
-
-                break;
             }
 
             match self.parse_statement() {
@@ -857,18 +881,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn warn(&mut self, reason: &str) {
-        self.warnings.push(format!(
-            "Warning({}): {}",
-            self.current_token.get_location(),
-            reason
-        ));
-    }
-
-    fn error<T>(&mut self, reason: &str) -> Result<T> {
-        let error_message = format!("Error({}): {}", self.current_token.get_location(), reason);
-        self.warnings.push(error_message.to_owned());
-        return Err(error_message.into());
+    fn warn(&mut self, warning: ParserWarning) {
+        self.warnings.push(warning);
     }
 
     fn dbg_trace(&mut self, context: &str) {

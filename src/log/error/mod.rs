@@ -84,7 +84,7 @@ impl Display for ParserErrorCode {
                         f,
                         "    {}\t{}{} ",
                         "|".blue(),
-                        " ".repeat(token.column - 2),
+                        " ".repeat(token.column - 1),
                         "^".repeat(token.literal.len()).red()
                     )?;
                     match expected_token_types.len() {
@@ -135,7 +135,7 @@ impl Display for ParserErrorCode {
                         f,
                         "    {}\t{}{} ",
                         "|".blue(),
-                        " ".repeat(token.column - 2),
+                        " ".repeat(token.column - 1),
                         "^".repeat(token.literal.len()).red()
                     )?;
                 }
@@ -164,7 +164,7 @@ impl Display for ParserErrorCode {
                         f,
                         "    {}\t{}{} ",
                         "|".blue(),
-                        " ".repeat(token.column - 2),
+                        " ".repeat(token.column - 1),
                         "^".repeat(token.literal.len()).red()
                     )?;
                 }
@@ -200,7 +200,7 @@ impl Display for ParserErrorCode {
                         f,
                         "    {}\t{}{} ",
                         "|".blue(),
-                        " ".repeat(token.column - 2),
+                        " ".repeat(token.column - 1),
                         "^".repeat(token.literal.len()).red()
                     )?;
                 }
@@ -243,7 +243,7 @@ impl Display for ParserErrorCode {
                         f,
                         "    {}\t{}{} ",
                         "|".blue(),
-                        " ".repeat(token.column - 2),
+                        " ".repeat(token.column - 1),
                         "^".repeat(token.literal.len()).red()
                     )?;
                 }

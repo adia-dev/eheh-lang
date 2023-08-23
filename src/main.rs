@@ -11,8 +11,10 @@ use crate::{
 };
 
 mod ast;
+mod evaluator;
 mod lexer;
 mod log;
+mod objects;
 mod parser;
 mod program;
 mod repl;

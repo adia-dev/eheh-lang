@@ -917,4 +917,4 @@ impl<'a> Parser<'a> {
 }
 
 #[cfg(test)]
-mod parser_tests;
+mod test;

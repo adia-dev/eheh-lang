@@ -351,4 +351,4 @@ impl Lexer {
 }
 
 #[cfg(test)]
-mod lexer_tests;
+mod test;

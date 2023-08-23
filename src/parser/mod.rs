@@ -224,7 +224,9 @@ impl<'a> Parser<'a> {
                     Err(err) => {
                         self.errors.push(err);
                         let current_line = self.current_token.line;
-                        while current_line == self.current_token.line && !self.current_token_is(TokenType::EOF) {
+                        while current_line == self.current_token.line
+                            && !self.current_token_is(TokenType::EOF)
+                        {
                             self.advance_token();
                         }
                     }

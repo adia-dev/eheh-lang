@@ -3,6 +3,10 @@ use crate::traits::object::{Object, ObjectType};
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Null {}
 
+impl Null {
+    pub fn new() -> Self { Self {  } }
+}
+
 impl Object for Null {
     fn t(&self) -> ObjectType {
         ObjectType::Null

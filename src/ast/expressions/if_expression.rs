@@ -43,6 +43,11 @@ impl Node for IfExpression {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+
+
+    fn as_node(&self) -> &dyn Node {
+        self
+    }
 }
 
 impl ToString for IfExpression {

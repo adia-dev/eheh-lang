@@ -26,6 +26,11 @@ impl Node for ExpressionStatement {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+
+    fn as_node(&self) -> &dyn Node {
+        self
+    }
 }
 
 impl Statement for ExpressionStatement {

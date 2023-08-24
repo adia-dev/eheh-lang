@@ -26,6 +26,11 @@ impl Node for ReturnStatement {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+
+    fn as_node(&self) -> &dyn Node {
+        self
+    }
 }
 
 impl Statement for ReturnStatement {

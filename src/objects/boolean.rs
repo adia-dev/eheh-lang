@@ -2,7 +2,7 @@ use crate::traits::object::{Object, ObjectType};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Boolean {
-    value: bool,
+    pub value: bool,
 }
 
 impl Object for Boolean {

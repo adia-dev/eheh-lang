@@ -2,7 +2,13 @@ use crate::traits::object::{IntegerType, Object, ObjectType};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Integer {
-    value: i64,
+    pub value: i64,
+}
+
+impl Integer {
+    pub fn new(value: i64) -> Self {
+        Self { value }
+    }
 }
 
 impl Object for Integer {

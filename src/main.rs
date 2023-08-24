@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use rlpl::RLPL;
+use repl::REPL;
 
 use crate::{
     log::warning::ParserWarning,
@@ -18,18 +18,13 @@ mod objects;
 mod parser;
 mod program;
 mod repl;
-mod rlpl;
 mod token;
 mod traits;
 mod types;
 
 fn main() {
-    // let mut repl = REPL::new();
-
-    // repl.start();
-
-    let mut rlpl = RLPL::new();
-    rlpl.start();
+    let mut repl = REPL::new();
+    repl.start();
 
     // let token = Token::new(
     //     TokenType::IDENT,

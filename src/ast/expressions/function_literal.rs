@@ -7,7 +7,7 @@ use crate::{
 use super::{identifier::Identifier, typed_identifier::TypedIdentifier};
 
 #[derive(Debug)]
-pub struct Function {
+pub struct FunctionLiteral {
     pub token: Token,
     pub name: Option<Identifier>,
     pub visibility: Option<Token>,
@@ -16,7 +16,7 @@ pub struct Function {
     pub body: BlockStatement,
 }
 
-impl Function {
+impl FunctionLiteral {
     pub fn new(
         token: Token,
         name: Option<Identifier>,
@@ -36,13 +36,13 @@ impl Function {
     }
 }
 
-impl Expression for Function {
+impl Expression for FunctionLiteral {
     fn eval(&self) -> String {
         "".to_string()
     }
 }
 
-impl Node for Function {
+impl Node for FunctionLiteral {
     fn get_token_literal(&self) -> String {
         self.token.literal.to_string()
     }
@@ -56,7 +56,7 @@ impl Node for Function {
     }
 }
 
-impl ToString for Function {
+impl ToString for FunctionLiteral {
     fn to_string(&self) -> String {
         let mut str = String::new();
 

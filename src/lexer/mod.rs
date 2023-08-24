@@ -252,13 +252,14 @@ impl Lexer {
     fn scan_number(&mut self) -> String {
         let position = self.position;
 
-        while self.c.is_numeric() {
+        while self.c.is_numeric() || self.c == '_' {
             self.advance();
         }
 
         self.input[position..self.position]
             .into_iter()
             .collect::<String>()
+            .replace("_", "")
     }
 
     fn scan_delimiter(&mut self, expected_closing: char) -> String {

@@ -1,12 +1,6 @@
-// TODO: Intercept the signal such as Ctrl+C or others to act override the default behavior
-// TODO: Rewrite the help command so that it actually becomes helpful
-
 use std::io::{self, stdout, Write};
 
-use crate::{
-    lexer::Lexer,
-    token::{token_type::TokenType, Token},
-};
+use crate::{lexer::Lexer, parser::Parser, evaluator::Evaluator, traits::node::Node};
 
 pub struct REPL {
     pub version: String,
@@ -26,7 +20,6 @@ impl REPL {
     }
 
     pub fn start(&mut self) {
-        // TOOD: make this dynamic, use the manifest from the toml file
         println!(
             "Interactive Eheh ({}) - press Ctrl+C to exit (type h() ENTER for help)",
             "v0.1.0"
@@ -66,15 +59,23 @@ impl REPL {
         }
 
         let mut lexer = Lexer::new(&self.buffer);
+        let mut parser = Parser::new(&mut lexer);
 
-        loop {
-            let token: Token = lexer.scan();
+        let program = parser.parse().unwrap();
 
-            match token.t {
-                TokenType::EOF | TokenType::ILLEGAL => break,
-                _ => println!("{:?}", token),
+        if !parser.errors.is_empty() {
+            for error in &parser.errors {
+                print!("{}", error);
             }
+            return;
         }
+
+        for warning in &parser.warnings {
+            println!("{}", warning);
+        }
+
+        let evaluated = Evaluator::eval(Box::new(program.as_node())).unwrap();
+        println!("{}\n", evaluated.to_string());
     }
 
     fn consume_command(&mut self) -> bool {

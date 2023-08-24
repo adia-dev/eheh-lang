@@ -2,7 +2,7 @@ pub mod tests {
     use crate::{
         ast::{
             expressions::{
-                boolean::Boolean, call_expression::CallExpression, function::Function,
+                boolean_expression::BooleanExpression, call_expression::CallExpression, function_literal::FunctionLiteral,
                 identifier::Identifier, if_expression::IfExpression,
                 infix_expression::InfixExpression, integer_literal::IntegerLiteral,
                 prefix_expression::PrefixExpression,
@@ -370,7 +370,7 @@ pub mod tests {
 
         for stmt in &program.statements {
             let exp_stmt = test_downcast_expression_statement_helper(stmt);
-            let _fn_exp = downcast_expression_helper::<Function>(&exp_stmt.expression);
+            let _fn_exp = downcast_expression_helper::<FunctionLiteral>(&exp_stmt.expression);
             // println!("{}\n", exp_stmt.to_string());
         }
     }
@@ -457,8 +457,8 @@ pub mod tests {
         ident
     }
 
-    fn test_boolean_helper(exp: &ASTExpression, value: bool) -> &Boolean {
-        let boolean = downcast_expression_helper::<Boolean>(exp);
+    fn test_boolean_helper(exp: &ASTExpression, value: bool) -> &BooleanExpression {
+        let boolean = downcast_expression_helper::<BooleanExpression>(exp);
         assert_eq!(boolean.value, value);
         assert_eq!(boolean.get_token_literal(), value.to_string());
         boolean

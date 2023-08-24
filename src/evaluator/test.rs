@@ -2,7 +2,7 @@ use std::process::exit;
 
 use crate::{
     lexer::Lexer,
-    objects::integer::Integer,
+    objects::{boolean::Boolean, integer::Integer},
     parser::Parser,
     traits::{
         node::Node,
@@ -23,6 +23,19 @@ fn test_eval_integer_literal() {
     for (input, value, t) in expected {
         let object = test_eval_helper(input).unwrap();
         test_eval_integer_helper(input, value, Some(t), object);
+    }
+}
+
+#[test]
+fn test_eval_boolean() {
+    let expected: Vec<(&'static str, bool)> = vec![
+        ("true", true),
+        ("false", false),
+    ];
+
+    for (input, value) in expected {
+        let object = test_eval_helper(input).unwrap();
+        test_eval_boolean_helper(input, value, object);
     }
 }
 
@@ -65,6 +78,25 @@ fn test_eval_integer_helper(
     }
 
     integer.clone()
+}
+
+fn test_eval_boolean_helper(input: &str, value: bool, object: Box<dyn Object>) -> Boolean {
+    let boolean = test_downcast_object_helper::<Boolean>(&object);
+
+    assert_eq!(
+        boolean.to_string(),
+        input,
+        "Expected boolean representation: {}, but got: {}",
+        input,
+        boolean.to_string()
+    );
+    assert_eq!(
+        boolean.value, value,
+        "Expected Boolean value: {}, but got: {}",
+        value, boolean.value
+    );
+
+    boolean.clone()
 }
 
 fn test_downcast_object_helper<T: 'static>(object: &Box<dyn Object>) -> &T {

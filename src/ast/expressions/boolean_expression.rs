@@ -4,12 +4,12 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Boolean {
+pub struct BooleanExpression {
     pub token: Token,
     pub value: bool,
 }
 
-impl Boolean {
+impl BooleanExpression {
     pub fn new(token: Token, value: bool) -> Self {
         Self { token, value }
     }
@@ -24,13 +24,13 @@ impl Boolean {
     }
 }
 
-impl Expression for Boolean {
+impl Expression for BooleanExpression {
     fn eval(&self) -> String {
         self.get_token_literal()
     }
 }
 
-impl Node for Boolean {
+impl Node for BooleanExpression {
     fn get_token_literal(&self) -> String {
         self.token.literal.to_string()
     }
@@ -45,7 +45,7 @@ impl Node for Boolean {
 
 }
 
-impl ToString for Boolean {
+impl ToString for BooleanExpression {
     fn to_string(&self) -> String {
         self.value.to_string()
     }

@@ -1,6 +1,6 @@
-pub mod boolean;
+pub mod boolean_expression;
 pub mod call_expression;
-pub mod function;
+pub mod function_literal;
 pub mod identifier;
 pub mod if_expression;
 pub mod infix_expression;

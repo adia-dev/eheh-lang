@@ -4,7 +4,7 @@ use crate::traits::object::{Object, ObjectType};
 pub struct Null {}
 
 impl Null {
-    pub fn new() -> Self { Self {  } }
+    pub const fn new() -> Self { Self {  } }
 }
 
 impl Object for Null {

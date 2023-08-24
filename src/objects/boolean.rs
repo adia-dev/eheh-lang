@@ -5,6 +5,10 @@ pub struct Boolean {
     pub value: bool,
 }
 
+impl Boolean {
+    pub const fn new(value: bool) -> Self { Self { value } }
+}
+
 impl Object for Boolean {
     fn t(&self) -> ObjectType {
         ObjectType::Boolean

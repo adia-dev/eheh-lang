@@ -3,10 +3,10 @@ use std::{collections::HashMap, fmt::Debug};
 use crate::{
     ast::{
         expressions::{
-            boolean::Boolean, call_expression::CallExpression, function::Function,
-            identifier::Identifier, if_expression::IfExpression, infix_expression::InfixExpression,
-            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
-            typed_identifier::TypedIdentifier,
+            boolean_expression::BooleanExpression, call_expression::CallExpression,
+            function_literal::FunctionLiteral, identifier::Identifier, if_expression::IfExpression,
+            infix_expression::InfixExpression, integer_literal::IntegerLiteral,
+            prefix_expression::PrefixExpression, typed_identifier::TypedIdentifier,
         },
         precedence::Precedence,
         statements::{
@@ -274,7 +274,7 @@ impl<'a> Parser<'a> {
 
     fn parse_boolean(&mut self) -> ASTExpressionResult {
         self.dbg_trace_inline("parse_boolean");
-        Ok(Box::new(Boolean::from_token(&self.current_token)))
+        Ok(Box::new(BooleanExpression::from_token(&self.current_token)))
     }
 
     fn parse_integer_literal(&mut self) -> ASTExpressionResult {
@@ -446,7 +446,7 @@ impl<'a> Parser<'a> {
                 code: ParserErrorCode::UnexpectedToken {
                     token: self.current_token.clone(),
                     expected_token_types: vec![TokenType::LPAREN],
-                    context: self.lexer.get_line(self.peek_token.line),
+                    context: self.lexer.get_line(self.current_token.line),
                 },
                 source: None,
             });
@@ -475,9 +475,9 @@ impl<'a> Parser<'a> {
         if !self.expect_peek_token_to_be(TokenType::LBRACE) {
             return Err(ParserError {
                 code: ParserErrorCode::UnexpectedToken {
-                    token: self.peek_token.clone(),
+                    token: self.current_token.clone(),
                     expected_token_types: vec![TokenType::LBRACE, TokenType::ARROW],
-                    context: self.lexer.get_line(self.peek_token.line),
+                    context: self.lexer.get_line(self.current_token.line),
                 },
                 source: None,
             });
@@ -493,7 +493,7 @@ impl<'a> Parser<'a> {
         }
 
         self.dbg_untrace("parse_function_expression");
-        Ok(Box::new(Function::new(
+        Ok(Box::new(FunctionLiteral::new(
             current_token.clone(),
             name,
             None,
@@ -804,7 +804,7 @@ impl<'a> Parser<'a> {
                 code: ParserErrorCode::UnexpectedToken {
                     token: self.current_token.clone(),
                     expected_token_types: vec![TokenType::IDENT],
-                    context: self.lexer.get_line(self.peek_token.line),
+                    context: self.lexer.get_line(self.current_token.line),
                 },
                 source: None,
             });
@@ -813,13 +813,11 @@ impl<'a> Parser<'a> {
         let identifier = Identifier::from_token(&self.current_token);
         let type_specifier = self.parse_type_specifier();
 
+        println!("ehehe");
+
         if self.peek_token_is(TokenType::ASSIGN) {
             self.advance_token();
-        } else if !self.peek_token_is(TokenType::SEMICOLON) {
-            self.expect_peek_token_to_be(TokenType::ASSIGN);
-        }
-
-        if self.peek_token_is(TokenType::SEMICOLON) {
+        } else if self.peek_token_is(TokenType::SEMICOLON) {
             self.advance_token();
 
             self.dbg_untrace(
@@ -836,6 +834,15 @@ impl<'a> Parser<'a> {
                 type_specifier,
                 None,
             )));
+        } else if !self.peek_token_is(TokenType::ASSIGN) {
+            return Err(ParserError {
+                code: ParserErrorCode::UnexpectedToken {
+                    token: self.current_token.clone(),
+                    expected_token_types: vec![TokenType::SEMICOLON],
+                    context: self.lexer.get_line(self.current_token.line),
+                },
+                source: None,
+            });
         }
 
         self.advance_token();
@@ -847,7 +854,7 @@ impl<'a> Parser<'a> {
                         code: ParserErrorCode::UnexpectedToken {
                             token: self.current_token.clone(),
                             expected_token_types: vec![TokenType::SEMICOLON],
-                            context: self.lexer.get_line(self.peek_token.line),
+                            context: self.lexer.get_line(self.current_token.line),
                         },
                         source: None,
                     });

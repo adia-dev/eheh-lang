@@ -2,10 +2,10 @@ use core::panic;
 
 use crate::{
     ast::{
-        expressions::integer_literal::IntegerLiteral,
+        expressions::{boolean_expression::BooleanExpression, integer_literal::IntegerLiteral},
         statements::expression_statements::ExpressionStatement,
     },
-    objects::{integer::Integer, null::Null},
+    objects::{boolean::Boolean, integer::Integer, null::Null},
     program::Program,
     traits::{node::Node, object::Object},
     types::{ASTStatement, EvaluatorResult},
@@ -13,6 +13,11 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct Evaluator {}
+
+// can't take full advantage of it since I have to clone them everytime...
+static TRUE: Boolean = Boolean::new(true);
+static FALSE: Boolean = Boolean::new(true);
+static NULL: Null = Null::new();
 
 impl Evaluator {
     pub fn eval(node: Box<&dyn Node>) -> EvaluatorResult {
@@ -28,12 +33,16 @@ impl Evaluator {
             return Ok(Box::new(Integer::new(integer_literal.value)));
         }
 
-        return Ok(Box::new(Null::new()));
+        if let Some(boolean) = node.as_any().downcast_ref::<BooleanExpression>() {
+            return Ok(Box::new(TRUE.clone()));
+        }
+
+        return Ok(Box::new(NULL.clone()));
     }
 
     fn eval_statements(statements: &Vec<ASTStatement>) -> EvaluatorResult {
         if statements.is_empty() {
-            return Ok(Box::new(Null::new()));
+            return Ok(Box::new(NULL.clone()));
         }
 
         let mut object: Option<EvaluatorResult> = None;

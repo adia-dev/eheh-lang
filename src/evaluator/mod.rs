@@ -14,9 +14,8 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Evaluator {}
 
-// can't take full advantage of it since I have to clone them everytime...
 static TRUE: Boolean = Boolean::new(true);
-static FALSE: Boolean = Boolean::new(true);
+static FALSE: Boolean = Boolean::new(false);
 static NULL: Null = Null::new();
 
 impl Evaluator {
@@ -34,7 +33,12 @@ impl Evaluator {
         }
 
         if let Some(boolean) = node.as_any().downcast_ref::<BooleanExpression>() {
-            return Ok(Box::new(TRUE.clone()));
+            if boolean.value {
+                return Ok(Box::new(TRUE.clone()));
+            }
+            else {
+                return Ok(Box::new(FALSE.clone()));
+            }
         }
 
         return Ok(Box::new(NULL.clone()));

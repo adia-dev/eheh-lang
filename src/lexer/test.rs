@@ -10,21 +10,25 @@ mod tests {
 
     #[test]
     fn test_scan() {
-        const CODE: &'static str = "=+(){}[],:;";
+        const CODE: &'static str = "=+(){}[],:;..++--..=";
 
-        let mut expected_tokens: Vec<(TokenType, String)> = Vec::new();
-        expected_tokens.push((TokenType::ASSIGN, "=".to_owned()));
-        expected_tokens.push((TokenType::PLUS, "+".to_owned()));
-        expected_tokens.push((TokenType::LPAREN, "(".to_owned()));
-        expected_tokens.push((TokenType::RPAREN, ")".to_owned()));
-        expected_tokens.push((TokenType::LBRACE, "{".to_owned()));
-        expected_tokens.push((TokenType::RBRACE, "}".to_owned()));
-        expected_tokens.push((TokenType::LBRACK, "[".to_owned()));
-        expected_tokens.push((TokenType::RBRACK, "]".to_owned()));
-        expected_tokens.push((TokenType::COMMA, ",".to_owned()));
-        expected_tokens.push((TokenType::COLON, ":".to_owned()));
-        expected_tokens.push((TokenType::SEMICOLON, ";".to_owned()));
-        expected_tokens.push((TokenType::EOF, "\0".to_owned()));
+        let mut expected_tokens: Vec<(TokenType, &str)> = Vec::new();
+        expected_tokens.push((TokenType::ASSIGN, "="));
+        expected_tokens.push((TokenType::PLUS, "+"));
+        expected_tokens.push((TokenType::LPAREN, "("));
+        expected_tokens.push((TokenType::RPAREN, ")"));
+        expected_tokens.push((TokenType::LBRACE, "{"));
+        expected_tokens.push((TokenType::RBRACE, "}"));
+        expected_tokens.push((TokenType::LBRACK, "["));
+        expected_tokens.push((TokenType::RBRACK, "]"));
+        expected_tokens.push((TokenType::COMMA, ","));
+        expected_tokens.push((TokenType::COLON, ":"));
+        expected_tokens.push((TokenType::SEMICOLON, ";"));
+        expected_tokens.push((TokenType::RANGE, ".."));
+        expected_tokens.push((TokenType::INCR, "++"));
+        expected_tokens.push((TokenType::DECR, "--"));
+        expected_tokens.push((TokenType::IRANGE, "--"));
+        expected_tokens.push((TokenType::EOF, "\0"));
 
         let mut lexer = Lexer::new(CODE.as_ref());
 

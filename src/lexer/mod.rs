@@ -54,17 +54,17 @@ impl Lexer {
 
         match self.c {
             '+' => {
-                if self.scan_compound_token(&mut token, '+', TokenType::INCR) {
+                if self.scan_compound_token(&mut token, "+", TokenType::INCR) {
                     return token;
                 }
                 token.t = TokenType::PLUS;
             }
             '-' => {
-                if self.scan_compound_token(&mut token, '-', TokenType::DECR) {
+                if self.scan_compound_token(&mut token, "-", TokenType::DECR) {
                     return token;
                 }
 
-                if self.scan_compound_token(&mut token, '>', TokenType::ARROW) {
+                if self.scan_compound_token(&mut token, ">", TokenType::ARROW) {
                     return token;
                 }
 
@@ -77,13 +77,13 @@ impl Lexer {
                 token.t = TokenType::HASH;
             }
             '&' => {
-                if self.scan_compound_token(&mut token, '&', TokenType::AND) {
+                if self.scan_compound_token(&mut token, "&", TokenType::AND) {
                     return token;
                 }
                 token.t = TokenType::AMPERSAND;
             }
             '=' => {
-                if self.scan_compound_token(&mut token, '=', TokenType::EQ) {
+                if self.scan_compound_token(&mut token, "=", TokenType::EQ) {
                     return token;
                 }
                 token.t = TokenType::ASSIGN;
@@ -99,7 +99,7 @@ impl Lexer {
             }
             '!' => {
                 token.t = TokenType::BANG;
-                if self.scan_compound_token(&mut token, '=', TokenType::NEQ) {
+                if self.scan_compound_token(&mut token, "=", TokenType::NEQ) {
                     return token;
                 }
             }
@@ -107,7 +107,10 @@ impl Lexer {
                 token.t = TokenType::DOLLAR;
             }
             '.' => {
-                if self.scan_compound_token(&mut token, '.', TokenType::RANGE) {
+                if self.scan_compound_token(&mut token, ".=", TokenType::IRANGE) {
+                    return token;
+                }
+                if self.scan_compound_token(&mut token, ".", TokenType::RANGE) {
                     return token;
                 }
                 token.t = TokenType::DOT;
@@ -117,10 +120,10 @@ impl Lexer {
                 token.literal = self.scan_delimiter('"');
             }
             '/' => {
-                if self.scan_compound_token(&mut token, '/', TokenType::COMMENT) {
+                if self.scan_compound_token(&mut token, "/", TokenType::COMMENT) {
                     self.eat_comment();
                     return self.scan();
-                } else if self.scan_compound_token(&mut token, '*', TokenType::COMMENTBLOCK) {
+                } else if self.scan_compound_token(&mut token, "*", TokenType::COMMENTBLOCK) {
                     self.eat_comment_block();
                     self.advance();
                     return self.scan();
@@ -131,7 +134,7 @@ impl Lexer {
                 token.t = TokenType::PERCENT;
             }
             '|' => {
-                if self.scan_compound_token(&mut token, '|', TokenType::OR) {
+                if self.scan_compound_token(&mut token, "|", TokenType::OR) {
                     return token;
                 }
                 token.t = TokenType::PIPE;
@@ -167,7 +170,7 @@ impl Lexer {
                 token.t = TokenType::COMMA;
             }
             ':' => {
-                if self.scan_compound_token(&mut token, ':', TokenType::SCOPE) {
+                if self.scan_compound_token(&mut token, ":", TokenType::SCOPE) {
                     return token;
                 }
                 token.t = TokenType::COLON;
@@ -176,18 +179,18 @@ impl Lexer {
                 token.t = TokenType::SEMICOLON;
             }
             '>' => {
-                if self.scan_compound_token(&mut token, '>', TokenType::RSHIFT) {
+                if self.scan_compound_token(&mut token, ">", TokenType::RSHIFT) {
                     return token;
-                } else if self.scan_compound_token(&mut token, '=', TokenType::GTE) {
+                } else if self.scan_compound_token(&mut token, "=", TokenType::GTE) {
                     return token;
                 }
 
                 token.t = TokenType::GT;
             }
             '<' => {
-                if self.scan_compound_token(&mut token, '<', TokenType::LSHIFT) {
+                if self.scan_compound_token(&mut token, "<", TokenType::LSHIFT) {
                     return token;
-                } else if self.scan_compound_token(&mut token, '=', TokenType::LTE) {
+                } else if self.scan_compound_token(&mut token, "=", TokenType::LTE) {
                     return token;
                 }
                 token.t = TokenType::LT;
@@ -281,21 +284,29 @@ impl Lexer {
     fn scan_compound_token(
         &mut self,
         token: &mut Token,
-        next_c: char,
+        expected_chars: &str,
         expected_token: TokenType,
     ) -> bool {
-        if self.peek() == next_c {
-            let c = self.c;
-            self.advance();
-
-            token.t = expected_token;
-            token.literal = format!("{}{}", c, self.c);
-
-            self.advance();
-            true
-        } else {
-            false
+        let position = self.position;
+        let next_position = self.next_position;
+        let mut literal: Vec<char> = Vec::new();
+        for c in expected_chars.chars() {
+            if self.peek() == c {
+                literal.push(self.c);
+                self.advance();
+            } else {
+                self.position = position;
+                self.next_position = next_position;
+                return false;
+            }
         }
+
+        literal.push(self.c);
+
+        token.t = expected_token;
+        token.literal = literal.iter().collect::<String>();
+        self.advance();
+        true
     }
 
     fn eat_whitespace(&mut self) {

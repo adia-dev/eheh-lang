@@ -148,7 +148,7 @@ warning[E01002]: The consequence of the if expression is empty. Consider swappin
         - [ ] For expression
         - [ ] While expression
         - [ ] Match expression
-        - [~] Range expression
+        - [ ] Range expression
         - [ ] Pipe expression (|> Elixir ♥️)
         - [ ] Defer expression
         - [ ] Await expression ??????????? (let's ignore this for now)
@@ -156,7 +156,7 @@ warning[E01002]: The consequence of the if expression is empty. Consider swappin
         - [ ] Cool little dot to call local Enums just like in `Zig` or `Swift`
     - [x] Statement nodes
         - [x] Block statement
-        - [] Declare statements
+        - [ ] Declare statements
             - [x] Let statements
             - [x] Const statements
             - [ ] Var statements

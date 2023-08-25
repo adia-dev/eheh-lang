@@ -1,4 +1,4 @@
-# [eheh-lang - Version 0.1.0 👾](#eheh-lang---version-010-👾)
+# [eheh-lang - Version 0.1.0 👾](#eheh-lang---version-010-)
 
 Lately a lot of new programming languages have been popping up. Some of them are really cool and offer qualities that others do not provide.
 My goal is absolutely not to create a new programming language that will be used by millions of people, but rather to learn how to create a programming language by implementing the features that I like from other languages.
@@ -7,16 +7,16 @@ For an in-depth look at my progress, you can find the 🗺️ roadmap [here](#�
 
 ## 📚 Table of Contents
 
-- [eheh-lang - Version 0.1.0 👾](#eheh-lang---version-010-👾)
-  - [📚 Table of Contents](#📚-table-of-contents)
-  - [📖 About](#📖-about)
-  - [📦 Installation and Run 🚀](#📦-installation-and-run-🚀)
-  - [🧙‍♂️ There are some pretty amazing warnings and errors too!](#🧙‍♂️-there-are-some-pretty-amazing-warnings-and-errors-too)
+- [eheh-lang - Version 0.1.0 👾](#eheh-lang---version-010-)
+  - [📚 Table of Contents](#-table-of-contents)
+  - [📖 About](#-about)
+  - [📦 Installation and Run 🚀](#-installation-and-run-🚀)
+  - [🧙‍♂️ There are some pretty amazing warnings and errors too!](#-there-are-some-pretty-amazing-warnings-and-errors-too)
   - [🌟 Getting Started -](#-getting-started--)
-  - [🗺️ Roadmap](#🗺️-roadmap)
-  - [🤝 Contributing](#🤝-contributing)
-  - [📜 License](#📜-license)
-  - [📞 Contact](#📞-contact)
+  - [🗺️ Roadmap](#-roadmap)
+  - [🤝 Contributing](#-contributing)
+  - [📜 License](#-license)
+  - [📞 Contact](#-contact)
 
 
 ## 📖 About

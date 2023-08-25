@@ -813,8 +813,6 @@ impl<'a> Parser<'a> {
         let identifier = Identifier::from_token(&self.current_token);
         let type_specifier = self.parse_type_specifier();
 
-        println!("ehehe");
-
         if self.peek_token_is(TokenType::ASSIGN) {
             self.advance_token();
         } else if self.peek_token_is(TokenType::SEMICOLON) {

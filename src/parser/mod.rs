@@ -101,7 +101,7 @@ impl<'a> Parser<'a> {
 
         self.prefix_fns.insert(
             TokenType::KEYWORD(KeywordTokenType::FUN),
-            Self::parse_function,
+            Self::parse_function_literal,
         );
 
         let prefix_tokens: Vec<TokenType> = vec![
@@ -429,7 +429,7 @@ impl<'a> Parser<'a> {
         )))
     }
 
-    fn parse_function(&mut self) -> ASTExpressionResult {
+    fn parse_function_literal(&mut self) -> ASTExpressionResult {
         self.dbg_trace("parse_if_expression");
 
         let current_token = self.current_token.clone(); // fn
@@ -549,9 +549,9 @@ impl<'a> Parser<'a> {
         if !self.expect_peek_token_to_be(TokenType::RPAREN) {
             return Err(ParserError {
                 code: ParserErrorCode::UnexpectedToken {
-                    token: self.current_token.clone(),
+                    token: self.peek_token.clone(),
                     expected_token_types: vec![TokenType::RPAREN],
-                    context: self.lexer.get_line(self.peek_token.line),
+                    context: self.lexer.get_line(self.current_token.line),
                 },
                 source: None,
             });

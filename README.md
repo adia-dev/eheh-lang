@@ -105,10 +105,10 @@ eheh(11)> exit
 
 ```rust
 eheh(1)> let add = fn(x, y { x + y; };
-error[E01000]: expected `)`, found `y`
+error[E01000]: expected `)`, found `{`
   --> src/main.rs:1:17
     |
-1   |   let add = fn(x, y { x + y; };
+1   |   let add = fn(x, y { x + y };
     |                   ^ : expected `)`
 
 eheh(2)> if (true) { 1 } else { 2 }

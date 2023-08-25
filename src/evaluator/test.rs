@@ -22,20 +22,55 @@ fn test_eval_integer_literal() {
 
     for (input, value, t) in expected {
         let object = test_eval_helper(input).unwrap();
-        test_eval_integer_helper(input, value, Some(t), object);
+        test_eval_integer_helper(object, input, value, Some(t));
     }
 }
 
 #[test]
 fn test_eval_boolean() {
-    let expected: Vec<(&'static str, bool)> = vec![
-        ("true", true),
-        ("false", false),
-    ];
+    let expected: Vec<(&'static str, bool)> = vec![("true", true), ("false", false)];
 
     for (input, value) in expected {
         let object = test_eval_helper(input).unwrap();
-        test_eval_boolean_helper(input, value, object);
+        test_eval_boolean_helper(object, input, value);
+    }
+}
+
+#[test]
+fn test_eval_bang_expression() {
+    let expected: Vec<(&str, &str, bool)> = vec![
+        ("!true", "false", false),
+        ("!false", "true", true),
+        ("!!false", "false", false),
+        ("!!true", "true", true),
+        ("!5", "false", false),
+        ("!0", "true", true),
+        ("!!5", "true", true),
+        ("!null", "true", true),
+        ("!-(++99)", "false", false),
+    ];
+
+    for (input, value_str, value) in expected {
+        let object = test_eval_helper(input).unwrap();
+        test_eval_boolean_helper(object, value_str, value);
+    }
+}
+
+#[test]
+fn test_eval_integer_expression() {
+    let expected: Vec<(&str, &str, i64)> = vec![
+        ("5", "5", 5),
+        ("-5", "-5", -5),
+        ("-(-5)", "5", 5),
+        ("--5", "4", 4),
+        ("++5", "6", 6),
+        ("-(++99)", "-100", -100),
+    ];
+
+    for (input, value_str, value) in expected {
+        let object = test_eval_helper(input).unwrap();
+        println!("input: {}, object: {:#?}", input, value);
+        test_eval_integer_helper(object, value_str, value, None);
     }
 }
 
@@ -48,10 +83,10 @@ fn test_eval_helper(input: &str) -> EvaluatorResult {
 }
 
 fn test_eval_integer_helper(
+    object: Box<dyn Object>,
     input: &str,
     value: i64,
     t: Option<ObjectType>,
-    object: Box<dyn Object>,
 ) -> Integer {
     let integer = test_downcast_object_helper::<Integer>(&object);
 
@@ -80,7 +115,7 @@ fn test_eval_integer_helper(
     integer.clone()
 }
 
-fn test_eval_boolean_helper(input: &str, value: bool, object: Box<dyn Object>) -> Boolean {
+fn test_eval_boolean_helper(object: Box<dyn Object>, input: &str, value: bool) -> Boolean {
     let boolean = test_downcast_object_helper::<Boolean>(&object);
 
     assert_eq!(

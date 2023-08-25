@@ -4,7 +4,7 @@ use colored::Colorize;
 
 use crate::token::{token_type::TokenType, Token};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(usize)]
 pub enum ParserErrorCode {
     UnexpectedToken {
@@ -254,7 +254,7 @@ impl Display for ParserErrorCode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParserError {
     pub source: Option<Box<ParserError>>,
     pub code: ParserErrorCode,

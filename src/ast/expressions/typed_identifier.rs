@@ -25,10 +25,12 @@ impl Node for TypedIdentifier {
         self.identifier.get_token_literal()
     }
 
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-
 
     fn as_node(&self) -> &dyn Node {
         self

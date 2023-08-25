@@ -1,4 +1,5 @@
 pub mod boolean_expression;
+pub mod null_expression;
 pub mod call_expression;
 pub mod function_literal;
 pub mod identifier;

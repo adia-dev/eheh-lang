@@ -6,7 +6,8 @@ use crate::{
             boolean_expression::BooleanExpression, call_expression::CallExpression,
             function_literal::FunctionLiteral, identifier::Identifier, if_expression::IfExpression,
             infix_expression::InfixExpression, integer_literal::IntegerLiteral,
-            prefix_expression::PrefixExpression, typed_identifier::TypedIdentifier,
+            null_expression::NullExpression, prefix_expression::PrefixExpression,
+            typed_identifier::TypedIdentifier,
         },
         precedence::Precedence,
         statements::{
@@ -87,6 +88,9 @@ impl<'a> Parser<'a> {
             TokenType::KEYWORD(KeywordTokenType::FALSE),
             Self::parse_boolean,
         );
+
+        self.prefix_fns
+            .insert(TokenType::KEYWORD(KeywordTokenType::NULL), Self::parse_null);
 
         self.prefix_fns
             .insert(TokenType::LPAREN, Self::parse_grouped_expression);
@@ -275,6 +279,11 @@ impl<'a> Parser<'a> {
     fn parse_boolean(&mut self) -> ASTExpressionResult {
         self.dbg_trace_inline("parse_boolean");
         Ok(Box::new(BooleanExpression::from_token(&self.current_token)))
+    }
+
+    fn parse_null(&mut self) -> ASTExpressionResult {
+        self.dbg_trace_inline("parse_null");
+        Ok(Box::new(NullExpression::new(self.current_token.clone())))
     }
 
     fn parse_integer_literal(&mut self) -> ASTExpressionResult {
@@ -608,15 +617,23 @@ impl<'a> Parser<'a> {
 
         let current_token = self.current_token.clone();
         self.advance_token();
-        let rhs = self.parse_expression(Precedence::PREFIX)?;
 
-        self.dbg_untrace("parse_prefix_expression");
+        match self.parse_expression(Precedence::PREFIX) {
+            Ok(rhs) => {
+                self.dbg_untrace("parse_prefix_expression");
 
-        Ok(Box::new(PrefixExpression::new(
-            current_token.clone(),
-            current_token.literal,
-            rhs,
-        )))
+                Ok(Box::new(PrefixExpression::new(
+                    current_token.clone(),
+                    current_token.literal,
+                    rhs,
+                )))
+            }
+            Err(err) => {
+                self.errors.push(err.clone());
+                self.advance_token();
+                return Err(err);
+            }
+        }
     }
 
     fn parse_infix_expression(&mut self, lhs: ASTExpression) -> ASTExpressionResult {
@@ -733,8 +750,19 @@ impl<'a> Parser<'a> {
             let mut left_exp = prefix_fn(self)?;
 
             loop {
-                if self.peek_token_is(TokenType::SEMICOLON) || self.peek_token_is(TokenType::EOF) {
+                if self.peek_token_is(TokenType::SEMICOLON) {
                     break;
+                }
+
+                if self.current_token_is(TokenType::EOF) {
+                    return Err(ParserError {
+                        code: ParserErrorCode::UnexpectedToken {
+                            token: self.current_token.clone(),
+                            expected_token_types: vec![TokenType::EOF],
+                            context: self.lexer.get_line(self.current_token.line),
+                        },
+                        source: None,
+                    });
                 }
 
                 if precedence >= self.peek_precedence() {

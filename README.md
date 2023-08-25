@@ -171,7 +171,7 @@ warning[E01002]: The consequence of the if expression is empty. Consider swappin
     - [x] Boolean object
     - [x] Integer object
     - [x] Null object
-    - [ ] Prefix expressions
+    - [x] Prefix expressions
     - [ ] Infix expressions
     - [ ] If expressions
     - [ ] Return statements

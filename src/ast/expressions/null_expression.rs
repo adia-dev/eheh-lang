@@ -4,33 +4,23 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct IntegerLiteral {
+pub struct NullExpression {
     pub token: Token,
-    pub value: i64,
 }
 
-impl IntegerLiteral {
-    pub fn new(token: Token, value: i64) -> Self {
-        Self { token, value }
-    }
-
-    pub fn from_token(token: &Token) -> Self {
-        let value = token.literal.parse::<i64>().unwrap();
-
-        Self {
-            token: token.clone(),
-            value,
-        }
+impl NullExpression {
+    pub fn new(token: Token) -> Self {
+        Self { token }
     }
 }
 
-impl Expression for IntegerLiteral {
+impl Expression for NullExpression {
     fn eval(&self) -> String {
-        self.value.to_string()
+        self.get_token_literal()
     }
 }
 
-impl Node for IntegerLiteral {
+impl Node for NullExpression {
     fn get_token_literal(&self) -> String {
         self.token.literal.to_string()
     }
@@ -42,14 +32,13 @@ impl Node for IntegerLiteral {
         self
     }
 
-
     fn as_node(&self) -> &dyn Node {
         self
     }
 }
 
-impl ToString for IntegerLiteral {
+impl ToString for NullExpression {
     fn to_string(&self) -> String {
-        self.value.to_string()
+        "null".to_string()
     }
 }

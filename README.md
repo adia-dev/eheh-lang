@@ -174,7 +174,7 @@ warning[E01002]: The consequence of the if expression is empty. Consider swappin
     - [x] Prefix expressions
     - [x] Infix expressions
     - [x] If expressions
-    - [ ] Return statements
+    - [x] Return statements
     - [ ] Let statements
     - [ ] Function objects
     - [ ] Function application

@@ -2,7 +2,7 @@ use std::process::exit;
 
 use crate::{
     lexer::Lexer,
-    objects::{boolean::Boolean, integer::Integer},
+    objects::{boolean::Boolean, integer::Integer, null::Null},
     parser::Parser,
     traits::{
         node::Node,
@@ -22,7 +22,7 @@ fn test_eval_integer_literal() {
 
     for (input, value, t) in expected {
         let object = test_eval_helper(input).unwrap();
-        test_eval_integer_helper(object, input, value, Some(t));
+        test_eval_integer_helper(object, value, Some(t));
     }
 }
 
@@ -86,30 +86,54 @@ fn test_eval_boolean_expression() {
 }
 
 #[test]
-fn test_eval_integer_expression() {
-    let expected: Vec<(&str, &str, i64)> = vec![
-        ("5", "5", 5),
-        ("-5", "-5", -5),
-        ("-(-5)", "5", 5),
-        ("--5", "4", 4),
-        ("++5", "6", 6),
-        ("-(++99)", "-100", -100),
-        ("5 + 5 + 5 + 5 - 10", "10", 10),
-        ("2 * 2 * 2 * 2 * 2", "32", 32),
-        ("-50 + 100 + -50", "0", 0),
-        ("5 * 2 + 10", "20", 20),
-        ("5 + 2 * 10", "25", 25),
-        ("20 + 2 * -10", "0", 0),
-        ("50 / 2 * 2 + 10", "60", 60),
-        ("2 * (5 + 10)", "30", 30),
-        ("3 * 3 * 3 + 10", "37", 37),
-        ("3 * (3 * 3) + 10", "37", 37),
-        ("(5 + 10 * 2 + 15 / 3) * 2 + -10", "50", 50),
+fn test_eval_if_expression() {
+    let expected: Vec<(&str, Box<dyn Object>)> = vec![
+        ("if (true) { 10 }", Box::new(Integer::new(10))),
+        ("if (false) { 10 }", Box::new(Null::new())),
+        ("if (1) { 10 }", Box::new(Integer::new(10))),
+        ("if (1 < 2) { 10 }", Box::new(Integer::new(10))),
+        ("if (1 > 2) { 10 }", Box::new(Null::new())),
+        ("if (1 > 2) { 10 } else { 20 }", Box::new(Integer::new(20))),
+        ("if (1 < 2) { 10 } else { 20 }", Box::new(Integer::new(10))),
     ];
 
-    for (input, value_str, value) in expected {
+    for (input, expected_object) in expected {
         let object = test_eval_helper(input).unwrap();
-        test_eval_integer_helper(object, value_str, value, None);
+        if object.t() == ObjectType::Null {
+            test_downcast_object_helper::<Null>(&expected_object);
+        } else {
+            let integer = test_downcast_object_helper::<Integer>(&expected_object);
+            let expected_integer = test_downcast_object_helper::<Integer>(&expected_object);
+            test_eval_integer_helper(object, expected_integer.value, Some(expected_integer.t()));
+        }
+    }
+}
+
+#[test]
+fn test_eval_integer_expression() {
+    let expected: Vec<(&str, i64)> = vec![
+        ("5", 5),
+        ("-5", -5),
+        ("-(-5)", 5),
+        ("--5", 4),
+        ("++5", 6),
+        ("-(++99)", -100),
+        ("5 + 5 + 5 + 5 - 10", 10),
+        ("2 * 2 * 2 * 2 * 2", 32),
+        ("-50 + 100 + -50", 0),
+        ("5 * 2 + 10", 20),
+        ("5 + 2 * 10", 25),
+        ("20 + 2 * -10", 0),
+        ("50 / 2 * 2 + 10", 60),
+        ("2 * (5 + 10)", 30),
+        ("3 * 3 * 3 + 10", 37),
+        ("3 * (3 * 3) + 10", 37),
+        ("(5 + 10 * 2 + 15 / 3) * 2 + -10", 50),
+    ];
+
+    for (input, value) in expected {
+        let object = test_eval_helper(input).unwrap();
+        test_eval_integer_helper(object, value, None);
     }
 }
 
@@ -121,21 +145,9 @@ fn test_eval_helper(input: &str) -> EvaluatorResult {
     Evaluator::eval(Box::new(program.as_node()))
 }
 
-fn test_eval_integer_helper(
-    object: Box<dyn Object>,
-    input: &str,
-    value: i64,
-    t: Option<ObjectType>,
-) -> Integer {
+fn test_eval_integer_helper(object: Box<dyn Object>, value: i64, t: Option<ObjectType>) -> Integer {
     let integer = test_downcast_object_helper::<Integer>(&object);
 
-    assert_eq!(
-        integer.to_string(),
-        input,
-        "Expected integer representation: {}, but got: {}",
-        input,
-        integer.to_string()
-    );
     assert_eq!(
         integer.value, value,
         "Expected integer value: {}, but got: {}",

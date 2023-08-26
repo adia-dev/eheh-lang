@@ -4,9 +4,9 @@ use crate::{
     ast::{
         expressions::{
             boolean_expression::BooleanExpression, infix_expression::InfixExpression,
-            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
+            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression, if_expression::IfExpression,
         },
-        statements::expression_statements::ExpressionStatement,
+        statements::{block_statement::BlockStatement, expression_statements::ExpressionStatement},
     },
     objects::{boolean::Boolean, integer::Integer, null::Null},
     program::Program,
@@ -32,6 +32,14 @@ impl Evaluator {
     pub fn eval(node: Box<&dyn Node>) -> EvaluatorResult {
         if let Some(program) = node.as_any().downcast_ref::<Program>() {
             return Evaluator::eval_statements(&program.statements);
+        }
+
+        if let Some(block) = node.as_any().downcast_ref::<BlockStatement>() {
+            return Evaluator::eval_statements(&block.statements);
+        }
+
+        if let Some(if_exp) = node.as_any().downcast_ref::<IfExpression>() {
+            return Evaluator::eval_if_expression(&if_exp);
         }
 
         if let Some(exp_stmt) = node.as_any().downcast_ref::<ExpressionStatement>() {
@@ -76,6 +84,18 @@ impl Evaluator {
         }
 
         return object.unwrap();
+    }
+
+    fn eval_if_expression(if_exp: &IfExpression) -> EvaluatorResult {
+        let condition = Evaluator::eval(Box::new(if_exp.condition.as_node()))?;
+
+        if Evaluator::is_truthy(&condition) {
+            return Evaluator::eval(Box::new(if_exp.consequence.as_node()));
+        } else if let Some(alt) = &if_exp.alternative {
+            return Evaluator::eval(Box::new(alt.as_node()))
+        } else {
+            return Ok(Box::new(NULL.clone()));
+        }
     }
 
     fn eval_prefix_expression(operator: &str, mut rhs: Box<dyn Object>) -> EvaluatorResult {
@@ -304,6 +324,20 @@ impl Evaluator {
             None => {
                 panic!("Failed to downcast an object to a mutable reference.")
             }
+        }
+    }
+
+    pub fn is_truthy(object: &Box<dyn Object>) -> bool {
+        match object.t() {
+            ObjectType::Boolean => {
+                Evaluator::downcast_object::<Boolean>(&object).value
+            },
+            ObjectType::Integer(_) => {
+                Evaluator::downcast_object::<Integer>(&object).value != 0
+            },
+            ObjectType::Null => {
+                false
+            },
         }
     }
 }

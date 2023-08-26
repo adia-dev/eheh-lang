@@ -50,6 +50,7 @@ impl Display for IntegerType {
 pub enum ObjectType {
     Boolean,
     Integer(IntegerType),
+    Return,
     Null,
 }
 
@@ -57,6 +58,7 @@ impl Display for ObjectType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ObjectType::Boolean => write!(f, "true/false"),
+            ObjectType::Return => write!(f, "return"),
             ObjectType::Integer(i) => i.fmt(f),
             ObjectType::Null => write!(f, "null"),
         }
@@ -67,13 +69,20 @@ pub trait Object: ToString {
     /// type of the object -> `ObjectType`
     fn t(&self) -> ObjectType;
     fn inspect(&self) -> String;
-    fn as_any(&self) -> &dyn Any;
+    fn as_any(self) -> Box<dyn Any>;
+    fn as_any_ref(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn clone_boxed(&self) -> Box<dyn Object>;
 }
-
 
 impl core::fmt::Debug for dyn Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Object{{{}}}", self.to_string())
+    }
+}
+
+impl Clone for Box<dyn Object> {
+    fn clone(&self) -> Box<dyn Object> {
+        self.as_ref().clone_boxed()
     }
 }

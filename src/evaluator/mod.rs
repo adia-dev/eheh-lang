@@ -3,12 +3,16 @@ use core::panic;
 use crate::{
     ast::{
         expressions::{
-            boolean_expression::BooleanExpression, infix_expression::InfixExpression,
-            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression, if_expression::IfExpression,
+            boolean_expression::BooleanExpression, if_expression::IfExpression,
+            infix_expression::InfixExpression, integer_literal::IntegerLiteral,
+            prefix_expression::PrefixExpression,
         },
-        statements::{block_statement::BlockStatement, expression_statements::ExpressionStatement},
+        statements::{
+            block_statement::BlockStatement, expression_statements::ExpressionStatement,
+            return_statements::ReturnStatement,
+        },
     },
-    objects::{boolean::Boolean, integer::Integer, null::Null},
+    objects::{boolean::Boolean, integer::Integer, null::Null, return_::Return},
     program::Program,
     traits::{
         node::Node,
@@ -31,23 +35,40 @@ static NULL: Null = Null::new();
 impl Evaluator {
     pub fn eval(node: Box<&dyn Node>) -> EvaluatorResult {
         if let Some(program) = node.as_any().downcast_ref::<Program>() {
-            return Evaluator::eval_statements(&program.statements);
+            return Evaluator::eval_program(&program.statements);
         }
 
         if let Some(block) = node.as_any().downcast_ref::<BlockStatement>() {
-            return Evaluator::eval_statements(&block.statements);
-        }
-
-        if let Some(if_exp) = node.as_any().downcast_ref::<IfExpression>() {
-            return Evaluator::eval_if_expression(&if_exp);
+            return Evaluator::eval_block_statement(&block.statements);
         }
 
         if let Some(exp_stmt) = node.as_any().downcast_ref::<ExpressionStatement>() {
             return Evaluator::eval(Box::new(exp_stmt.expression.as_node()));
         }
 
+        if let Some(return_stmt) = node.as_any().downcast_ref::<ReturnStatement>() {
+            if let Some(exp) = &return_stmt.value {
+                let return_value = Evaluator::eval(Box::new(exp.as_node()))?;
+                return Ok(Box::new(Return::new(Some(return_value))));
+            } else {
+                return Ok(Box::new(NULL.clone()));
+            }
+        }
+
+        if let Some(if_exp) = node.as_any().downcast_ref::<IfExpression>() {
+            return Evaluator::eval_if_expression(&if_exp);
+        }
+
         if let Some(integer_literal) = node.as_any().downcast_ref::<IntegerLiteral>() {
             return Ok(Box::new(Integer::new(integer_literal.value)));
+        }
+
+        if let Some(boolean) = node.as_any().downcast_ref::<BooleanExpression>() {
+            if boolean.value {
+                return Ok(Box::new(TRUE.clone()));
+            } else {
+                return Ok(Box::new(FALSE.clone()));
+            }
         }
 
         if let Some(infix_expression) = node.as_any().downcast_ref::<InfixExpression>() {
@@ -61,29 +82,61 @@ impl Evaluator {
             return Evaluator::eval_prefix_expression(prefix_expression.operator.as_str(), rhs);
         }
 
-        if let Some(boolean) = node.as_any().downcast_ref::<BooleanExpression>() {
-            if boolean.value {
-                return Ok(Box::new(TRUE.clone()));
-            } else {
-                return Ok(Box::new(FALSE.clone()));
-            }
-        }
-
         return Ok(Box::new(NULL.clone()));
     }
 
-    fn eval_statements(statements: &Vec<ASTStatement>) -> EvaluatorResult {
+    fn eval_program(statements: &Vec<ASTStatement>) -> EvaluatorResult {
         if statements.is_empty() {
             return Ok(Box::new(NULL.clone()));
         }
 
-        let mut object: Option<EvaluatorResult> = None;
+        let mut object: Option<Box<dyn Object>> = None;
 
         for (stmt) in statements {
-            object = Some(Evaluator::eval(Box::new(stmt.as_node())));
+            let evaluated = Evaluator::eval(Box::new(stmt.as_node()))?;
+
+            if evaluated.t() == ObjectType::Return {
+                if let Some(return_value) =
+                    &Evaluator::downcast_ref_object::<Return>(&evaluated).value
+                {
+                    return Ok(return_value.clone());
+                } else {
+                    return Ok(Box::new(NULL.clone()));
+                }
+            }
+
+            object = Some(evaluated);
         }
 
-        return object.unwrap();
+        if let Some(obj) = object {
+            Ok(obj)
+        } else {
+            Ok(Box::new(NULL.clone()))
+        }
+    }
+
+    fn eval_block_statement(statements: &Vec<ASTStatement>) -> EvaluatorResult {
+        if statements.is_empty() {
+            return Ok(Box::new(NULL.clone()));
+        }
+
+        let mut object: Option<Box<dyn Object>> = None;
+
+        for (stmt) in statements {
+            let evaluated = Evaluator::eval(Box::new(stmt.as_node()))?;
+
+            if evaluated.t() == ObjectType::Return {
+                return Ok(evaluated);
+            }
+
+            object = Some(evaluated);
+        }
+
+        if let Some(obj) = object {
+            Ok(obj)
+        } else {
+            Ok(Box::new(NULL.clone()))
+        }
     }
 
     fn eval_if_expression(if_exp: &IfExpression) -> EvaluatorResult {
@@ -92,7 +145,7 @@ impl Evaluator {
         if Evaluator::is_truthy(&condition) {
             return Evaluator::eval(Box::new(if_exp.consequence.as_node()));
         } else if let Some(alt) = &if_exp.alternative {
-            return Evaluator::eval(Box::new(alt.as_node()))
+            return Evaluator::eval(Box::new(alt.as_node()));
         } else {
             return Ok(Box::new(NULL.clone()));
         }
@@ -116,12 +169,12 @@ impl Evaluator {
     fn eval_bang_prefix_expression(mut rhs: Box<dyn Object>) -> EvaluatorResult {
         match rhs.t() {
             ObjectType::Boolean => {
-                let mut boolean = Evaluator::downcast_object_mut::<Boolean>(&mut rhs);
+                let mut boolean = Evaluator::downcast_mut_object::<Boolean>(&mut rhs);
                 boolean.value = !boolean.value;
                 Ok(rhs)
             }
             ObjectType::Integer(_) => {
-                let mut integer = Evaluator::downcast_object::<Integer>(&rhs);
+                let mut integer = Evaluator::downcast_ref_object::<Integer>(&rhs);
                 if integer.value == 0 {
                     Ok(Box::new(TRUE.clone()))
                 } else {
@@ -136,7 +189,7 @@ impl Evaluator {
     fn eval_minus_prefix_expression(mut rhs: Box<dyn Object>) -> EvaluatorResult {
         match rhs.t() {
             ObjectType::Integer(_) => {
-                let mut integer = Evaluator::downcast_object_mut::<Integer>(&mut rhs);
+                let mut integer = Evaluator::downcast_mut_object::<Integer>(&mut rhs);
                 integer.value = -integer.value;
                 Ok(rhs)
             }
@@ -148,7 +201,7 @@ impl Evaluator {
     fn eval_incr_prefix_expression(mut rhs: Box<dyn Object>) -> EvaluatorResult {
         match rhs.t() {
             ObjectType::Integer(_) => {
-                let mut integer = Evaluator::downcast_object_mut::<Integer>(&mut rhs);
+                let mut integer = Evaluator::downcast_mut_object::<Integer>(&mut rhs);
                 integer.value = integer.value.overflowing_add(1).0;
                 Ok(rhs)
             }
@@ -160,7 +213,7 @@ impl Evaluator {
     fn eval_decr_prefix_expression(mut rhs: Box<dyn Object>) -> EvaluatorResult {
         match rhs.t() {
             ObjectType::Integer(_) => {
-                let mut integer = Evaluator::downcast_object_mut::<Integer>(&mut rhs);
+                let mut integer = Evaluator::downcast_mut_object::<Integer>(&mut rhs);
                 integer.value = integer.value.overflowing_sub(1).0;
                 Ok(rhs)
             }
@@ -182,7 +235,7 @@ impl Evaluator {
                 Evaluator::eval_integer_to_integer_infix_expression(operator, lhs, rhs)
             }
             (ObjectType::Boolean, ObjectType::Integer(_)) => {
-                let rhs_integer = Evaluator::downcast_object::<Integer>(&rhs);
+                let rhs_integer = Evaluator::downcast_ref_object::<Integer>(&rhs);
                 match operator {
                     "&&" | "||" | "==" | "!=" | ">" | "<" | ">=" | "<=" => {
                         Evaluator::eval_boolean_to_boolean_infix_expression(
@@ -192,7 +245,7 @@ impl Evaluator {
                         )
                     }
                     _ => {
-                        let lhs_boolean = Evaluator::downcast_object::<Boolean>(&lhs);
+                        let lhs_boolean = Evaluator::downcast_ref_object::<Boolean>(&lhs);
                         let lhs_integer = Integer::new(if lhs_boolean.value { 1 } else { 0 });
 
                         Evaluator::eval_integer_to_integer_infix_expression(
@@ -212,8 +265,8 @@ impl Evaluator {
         mut lhs: Box<dyn Object>,
         mut rhs: Box<dyn Object>,
     ) -> EvaluatorResult {
-        let lhs_boolean = Evaluator::downcast_object::<Boolean>(&lhs);
-        let rhs_boolean = Evaluator::downcast_object::<Boolean>(&rhs);
+        let lhs_boolean = Evaluator::downcast_ref_object::<Boolean>(&lhs);
+        let rhs_boolean = Evaluator::downcast_ref_object::<Boolean>(&rhs);
 
         match operator {
             "&&" => Ok(Box::new(Boolean::new(
@@ -249,8 +302,8 @@ impl Evaluator {
         mut lhs: Box<dyn Object>,
         mut rhs: Box<dyn Object>,
     ) -> EvaluatorResult {
-        let lhs_integer = Evaluator::downcast_object::<Integer>(&lhs);
-        let rhs_integer = Evaluator::downcast_object::<Integer>(&rhs);
+        let lhs_integer = Evaluator::downcast_ref_object::<Integer>(&lhs);
+        let rhs_integer = Evaluator::downcast_ref_object::<Integer>(&rhs);
 
         match operator {
             "&&" | "||" => {
@@ -309,8 +362,8 @@ impl Evaluator {
         }
     }
 
-    pub fn downcast_object<T: 'static>(object: &Box<dyn Object>) -> &T {
-        match object.as_any().downcast_ref::<T>() {
+    pub fn downcast_ref_object<T: 'static>(object: &Box<dyn Object>) -> &T {
+        match object.as_any_ref().downcast_ref::<T>() {
             Some(obj) => obj,
             None => {
                 panic!("Failed to downcast an object: {:?}", object.to_string())
@@ -318,7 +371,7 @@ impl Evaluator {
         }
     }
 
-    pub fn downcast_object_mut<T: 'static>(object: &mut Box<dyn Object>) -> &mut T {
+    pub fn downcast_mut_object<T: 'static>(object: &mut Box<dyn Object>) -> &mut T {
         match object.as_any_mut().downcast_mut::<T>() {
             Some(obj) => obj,
             None => {
@@ -329,15 +382,9 @@ impl Evaluator {
 
     pub fn is_truthy(object: &Box<dyn Object>) -> bool {
         match object.t() {
-            ObjectType::Boolean => {
-                Evaluator::downcast_object::<Boolean>(&object).value
-            },
-            ObjectType::Integer(_) => {
-                Evaluator::downcast_object::<Integer>(&object).value != 0
-            },
-            ObjectType::Null => {
-                false
-            },
+            ObjectType::Boolean => Evaluator::downcast_ref_object::<Boolean>(&object).value,
+            ObjectType::Integer(_) => Evaluator::downcast_ref_object::<Integer>(&object).value != 0,
+            _ => false,
         }
     }
 }

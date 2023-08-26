@@ -86,6 +86,22 @@ fn test_eval_boolean_expression() {
 }
 
 #[test]
+fn test_eval_return_statement() {
+    let expected: Vec<(&str, i64)> = vec![
+        ("return 10;", 10),
+        ("return 10; 9;", 10),
+        ("return 2 * 5; 9;", 10),
+        ("9; return 2 * 5; 9;", 10),
+        ("if true { if true { return 1; } return 2; }", 1),
+    ];
+
+    for (input, value) in expected {
+        let object = test_eval_helper(input).unwrap();
+        test_eval_integer_helper(object, value, None);
+    }
+}
+
+#[test]
 fn test_eval_if_expression() {
     let expected: Vec<(&str, Box<dyn Object>)> = vec![
         ("if (true) { 10 }", Box::new(Integer::new(10))),
@@ -186,7 +202,7 @@ fn test_eval_boolean_helper(object: Box<dyn Object>, input: &str, value: bool) -
 }
 
 fn test_downcast_object_helper<T: 'static>(object: &Box<dyn Object>) -> &T {
-    match object.as_any().downcast_ref::<T>() {
+    match object.as_any_ref().downcast_ref::<T>() {
         Some(t_exp) => t_exp,
         None => {
             panic!("Failed to downcast an object: {:?}", object.to_string())

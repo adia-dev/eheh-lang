@@ -1,15 +1,19 @@
 use crate::traits::object::{Object, ObjectType};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Null {}
-
-impl Null {
-    pub const fn new() -> Self { Self {  } }
+#[derive(Debug, Clone)]
+pub struct Return {
+    pub value: Option<Box<dyn Object>>,
 }
 
-impl Object for Null {
+impl Return {
+    pub fn new(value: Option<Box<dyn Object>>) -> Self {
+        Self { value }
+    }
+}
+
+impl Object for Return {
     fn t(&self) -> ObjectType {
-        ObjectType::Null
+        ObjectType::Return
     }
 
     fn inspect(&self) -> String {
@@ -28,14 +32,19 @@ impl Object for Null {
         Box::new(self)
     }
 
+
     fn clone_boxed(&self) -> Box<dyn Object> {
         Box::new(self.clone())
     }
-
 }
 
-impl ToString for Null {
+
+impl ToString for Return {
     fn to_string(&self) -> String {
-        "null".to_string()
+        if let Some(value) = &self.value {
+            format!("return {}", value.to_string())
+        } else {
+            "return".to_string()
+        }
     }
 }

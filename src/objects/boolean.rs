@@ -6,7 +6,9 @@ pub struct Boolean {
 }
 
 impl Boolean {
-    pub const fn new(value: bool) -> Self { Self { value } }
+    pub const fn new(value: bool) -> Self {
+        Self { value }
+    }
 }
 
 impl Object for Boolean {
@@ -21,8 +23,16 @@ impl Object for Boolean {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-    fn as_any(&self) -> &dyn std::any::Any {
+    fn as_any_ref(&self) -> &dyn std::any::Any {
         self
+    }
+
+    fn as_any(self) -> Box<dyn std::any::Any> {
+        Box::new(self)
+    }
+
+    fn clone_boxed(&self) -> Box<dyn Object> {
+        Box::new(self.clone())
     }
 }
 

@@ -89,6 +89,9 @@ impl Lexer {
                 token.t = TokenType::ASSIGN;
             }
             '*' => {
+                if self.scan_compound_token(&mut token, "*", TokenType::DASTERISK) {
+                    return token;
+                }
                 token.t = TokenType::ASTERISK;
             }
             '@' => {

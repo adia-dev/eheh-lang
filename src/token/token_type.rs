@@ -16,6 +16,7 @@ pub enum TokenType {
     DECR,         // --
     DOLLAR,       // $
     DOT,          // .
+    DASTERISK,    // **
     DQUOTE,       // "
     EOF,          // \0
     EQ,           // ==
@@ -90,6 +91,7 @@ impl TokenType {
             TokenType::DECR => "--".to_string(),
             TokenType::DOLLAR => "$".to_string(),
             TokenType::DOT => ".".to_string(),
+            TokenType::DASTERISK => "**".to_string(),
             TokenType::DQUOTE => "\"".to_string(),
             TokenType::EOF => "<EOF>".to_string(),
             TokenType::EQ => "==".to_string(),
@@ -129,7 +131,6 @@ impl TokenType {
             TokenType::UNDERSCORE => "_".to_string(),
             TokenType::ARROW => "->".to_string(),
             TokenType::KEYWORD(kw) => kw.to_literal(),
-            t => t.to_string(),
         }
     }
 

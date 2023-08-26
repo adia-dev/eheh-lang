@@ -57,6 +57,35 @@ fn test_eval_bang_expression() {
 }
 
 #[test]
+fn test_eval_boolean_expression() {
+    let expected: Vec<(&str, bool)> = vec![
+        ("true && true", true),
+        ("true && false", false),
+        ("true || false", true),
+        ("false || false", false),
+        ("true && 1", true),
+        ("true && 0", false),
+        ("1 || 0", true),
+        ("1 && 5", true),
+        ("(1 && 5 && false) || true", true),
+        ("true == true", true),
+        ("false == false", true),
+        ("true == false", false),
+        ("true != false", true),
+        ("false != true", true),
+        ("(1 < 2) == true", true),
+        ("(1 < 2) == false", false),
+        ("(1 > 2) == true", false),
+        ("(1 > 2) == false", true),
+    ];
+
+    for (input, value) in expected {
+        let object = test_eval_helper(input).unwrap();
+        test_eval_boolean_helper(object, value.to_string().as_str(), value);
+    }
+}
+
+#[test]
 fn test_eval_integer_expression() {
     let expected: Vec<(&str, &str, i64)> = vec![
         ("5", "5", 5),
@@ -65,11 +94,21 @@ fn test_eval_integer_expression() {
         ("--5", "4", 4),
         ("++5", "6", 6),
         ("-(++99)", "-100", -100),
+        ("5 + 5 + 5 + 5 - 10", "10", 10),
+        ("2 * 2 * 2 * 2 * 2", "32", 32),
+        ("-50 + 100 + -50", "0", 0),
+        ("5 * 2 + 10", "20", 20),
+        ("5 + 2 * 10", "25", 25),
+        ("20 + 2 * -10", "0", 0),
+        ("50 / 2 * 2 + 10", "60", 60),
+        ("2 * (5 + 10)", "30", 30),
+        ("3 * 3 * 3 + 10", "37", 37),
+        ("3 * (3 * 3) + 10", "37", 37),
+        ("(5 + 10 * 2 + 15 / 3) * 2 + -10", "50", 50),
     ];
 
     for (input, value_str, value) in expected {
         let object = test_eval_helper(input).unwrap();
-        println!("input: {}, object: {:#?}", input, value);
         test_eval_integer_helper(object, value_str, value, None);
     }
 }

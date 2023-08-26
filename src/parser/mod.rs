@@ -131,6 +131,7 @@ impl<'a> Parser<'a> {
             TokenType::FORWARDSLASH,
             TokenType::IRANGE,
             TokenType::RANGE,
+            TokenType::DASTERISK,
             TokenType::EXPONENT,
             TokenType::AND,
             TokenType::OR,

@@ -1,4 +1,5 @@
 use core::panic;
+use std::sync::Arc;
 
 use crate::{
     ast::{
@@ -12,8 +13,13 @@ use crate::{
             return_statement::ReturnStatement,
         },
     },
-    objects::{boolean::Boolean, integer::Integer, null::Null, return_::Return},
+    log::error::runtime::{RuntimeError, RuntimeErrorCode},
+    objects::{boolean::Boolean, error::Error, integer::Integer, null::Null, return_::Return},
     program::Program,
+    token::{
+        token_type::{KeywordTokenType, TokenType},
+        Token,
+    },
     traits::{
         node::Node,
         object::{Object, ObjectType},
@@ -49,6 +55,11 @@ impl Evaluator {
         if let Some(return_stmt) = node.as_any().downcast_ref::<ReturnStatement>() {
             if let Some(exp) = &return_stmt.value {
                 let return_value = Evaluator::eval(Box::new(exp.as_node()))?;
+
+                if Evaluator::is_error(&return_value) {
+                    return Ok(return_value);
+                }
+
                 return Ok(Box::new(Return::new(Some(return_value))));
             } else {
                 return Ok(Box::new(NULL.clone()));
@@ -73,12 +84,24 @@ impl Evaluator {
 
         if let Some(infix_expression) = node.as_any().downcast_ref::<InfixExpression>() {
             let lhs = Evaluator::eval(Box::new(infix_expression.lhs.as_node()))?;
+
+            if Evaluator::is_error(&lhs) {
+                return Ok(lhs);
+            }
+
             let rhs = Evaluator::eval(Box::new(infix_expression.rhs.as_node()))?;
+            if Evaluator::is_error(&rhs) {
+                return Ok(rhs);
+            }
             return Evaluator::eval_infix_expression(infix_expression.operator.as_str(), lhs, rhs);
         }
 
         if let Some(prefix_expression) = node.as_any().downcast_ref::<PrefixExpression>() {
             let rhs = Evaluator::eval(Box::new(prefix_expression.rhs.as_node()))?;
+            if Evaluator::is_error(&rhs) {
+                return Ok(rhs);
+            }
+
             return Evaluator::eval_prefix_expression(prefix_expression.operator.as_str(), rhs);
         }
 
@@ -95,14 +118,20 @@ impl Evaluator {
         for (stmt) in statements {
             let evaluated = Evaluator::eval(Box::new(stmt.as_node()))?;
 
-            if evaluated.t() == ObjectType::Return {
-                if let Some(return_value) =
-                    &Evaluator::downcast_ref_object::<Return>(&evaluated).value
-                {
-                    return Ok(return_value.clone());
-                } else {
-                    return Ok(Box::new(NULL.clone()));
+            match evaluated.t() {
+                ObjectType::Return => {
+                    if let Some(return_value) =
+                        &Evaluator::downcast_ref_object::<Return>(&evaluated).value
+                    {
+                        return Ok(return_value.clone());
+                    } else {
+                        return Ok(Box::new(NULL.clone()));
+                    }
                 }
+                ObjectType::Error => {
+                    return Ok(evaluated);
+                }
+                _ => (),
             }
 
             object = Some(evaluated);
@@ -125,7 +154,7 @@ impl Evaluator {
         for (stmt) in statements {
             let evaluated = Evaluator::eval(Box::new(stmt.as_node()))?;
 
-            if evaluated.t() == ObjectType::Return {
+            if evaluated.t() == ObjectType::Return || evaluated.t() == ObjectType::Error {
                 return Ok(evaluated);
             }
 
@@ -157,12 +186,32 @@ impl Evaluator {
             "-" => Evaluator::eval_minus_prefix_expression(rhs),
             "--" => Evaluator::eval_decr_prefix_expression(rhs),
             "++" => Evaluator::eval_incr_prefix_expression(rhs),
-            ".." | "..=" => Evaluator::eval_integer_to_integer_infix_expression(
-                operator,
-                Box::new(Integer::new(0)),
-                rhs,
-            ),
-            _ => Ok(Box::new(NULL.clone())),
+            ".." | "..=" => match rhs.t() {
+                ObjectType::Integer(_) => Evaluator::eval_integer_to_integer_infix_expression(
+                    operator,
+                    Box::new(Integer::new(0)),
+                    rhs,
+                ),
+                _ => Evaluator::new_error(Box::new(RuntimeError {
+                    code: RuntimeErrorCode::InvalidOperation {
+                        operation: format!("{}{}", operator, rhs.to_string()),
+                        context: None,
+                    },
+                    source: None,
+                })),
+            },
+            _ => Evaluator::new_error(Box::new(RuntimeError {
+                code: RuntimeErrorCode::UnknownInfixOperator {
+                    operator: operator.to_string(),
+                    context: Some(format!(
+                        "{}{}({})",
+                        operator,
+                        rhs.to_string(),
+                        rhs.t().to_string(),
+                    )),
+                },
+                source: None,
+            })),
         }
     }
 
@@ -182,7 +231,13 @@ impl Evaluator {
                 }
             }
             ObjectType::Null => Ok(Box::new(TRUE.clone())),
-            _ => Ok(Box::new(NULL.clone())),
+            _ => Evaluator::new_error(Box::new(RuntimeError {
+                code: RuntimeErrorCode::InvalidOperation {
+                    operation: format!("!{}", rhs.to_string()),
+                    context: Some(format!("!{}", rhs.to_string())),
+                },
+                source: None,
+            })),
         }
     }
 
@@ -194,7 +249,13 @@ impl Evaluator {
                 Ok(rhs)
             }
             ObjectType::Null => Ok(Box::new(TRUE.clone())),
-            _ => Ok(Box::new(NULL.clone())),
+            _ => Evaluator::new_error(Box::new(RuntimeError {
+                code: RuntimeErrorCode::InvalidOperation {
+                    operation: format!("-{}", rhs.to_string()),
+                    context: Some(format!("-{}", rhs.to_string())),
+                },
+                source: None,
+            })),
         }
     }
 
@@ -202,11 +263,24 @@ impl Evaluator {
         match rhs.t() {
             ObjectType::Integer(_) => {
                 let mut integer = Evaluator::downcast_mut_object::<Integer>(&mut rhs);
-                integer.value = integer.value.overflowing_add(1).0;
-                Ok(rhs)
+                let (value, overflowed) = integer.value.overflowing_add(1);
+                if overflowed {
+                    Evaluator::new_error(Box::new(RuntimeError {
+                        code: RuntimeErrorCode::OverflowError,
+                        source: None,
+                    }))
+                } else {
+                    integer.value = value;
+                    Ok(rhs)
+                }
             }
-            ObjectType::Null => Ok(Box::new(TRUE.clone())),
-            _ => Ok(Box::new(NULL.clone())),
+            _ => Evaluator::new_error(Box::new(RuntimeError {
+                code: RuntimeErrorCode::InvalidOperation {
+                    operation: format!("++{}", rhs.to_string()),
+                    context: Some(format!("++{}", rhs.to_string())),
+                },
+                source: None,
+            })),
         }
     }
 
@@ -214,11 +288,24 @@ impl Evaluator {
         match rhs.t() {
             ObjectType::Integer(_) => {
                 let mut integer = Evaluator::downcast_mut_object::<Integer>(&mut rhs);
-                integer.value = integer.value.overflowing_sub(1).0;
-                Ok(rhs)
+                let (value, overflowed) = integer.value.overflowing_sub(1);
+                if overflowed {
+                    Evaluator::new_error(Box::new(RuntimeError {
+                        code: RuntimeErrorCode::OverflowError,
+                        source: None,
+                    }))
+                } else {
+                    integer.value = value;
+                    Ok(rhs)
+                }
             }
-            ObjectType::Null => Ok(Box::new(TRUE.clone())),
-            _ => Ok(Box::new(NULL.clone())),
+            _ => Evaluator::new_error(Box::new(RuntimeError {
+                code: RuntimeErrorCode::InvalidOperation {
+                    operation: format!("--{}", rhs.to_string()),
+                    context: Some(format!("--{}", rhs.to_string())),
+                },
+                source: None,
+            })),
         }
     }
 
@@ -256,7 +343,20 @@ impl Evaluator {
                     }
                 }
             }
-            _ => Ok(Box::new(NULL.clone())),
+            _ => Evaluator::new_error(Box::new(RuntimeError {
+                code: RuntimeErrorCode::InvalidOperation {
+                    context: None,
+                    operation: format!(
+                        "{}({}){}{}({})",
+                        lhs.to_string(),
+                        lhs.t().to_string(),
+                        operator,
+                        rhs.to_string(),
+                        rhs.t().to_string()
+                    ),
+                },
+                source: None,
+            })),
         }
     }
 
@@ -293,7 +393,20 @@ impl Evaluator {
             ">=" => Ok(Box::new(Boolean::new(
                 lhs_boolean.value >= rhs_boolean.value,
             ))),
-            _ => Ok(Box::new(NULL.clone())),
+            _ => Evaluator::new_error(Box::new(RuntimeError {
+                code: RuntimeErrorCode::UnknownInfixOperator {
+                    operator: operator.to_string(),
+                    context: Some(format!(
+                        "{}({}){}{}({})",
+                        lhs.to_string(),
+                        lhs.t().to_string(),
+                        operator,
+                        rhs.to_string(),
+                        rhs.t().to_string()
+                    )),
+                },
+                source: None,
+            })),
         }
     }
 
@@ -358,7 +471,20 @@ impl Evaluator {
             "/" => Ok(Box::new(Integer::new(
                 lhs_integer.value / rhs_integer.value,
             ))),
-            _ => Ok(Box::new(NULL.clone())),
+            _ => Evaluator::new_error(Box::new(RuntimeError {
+                code: RuntimeErrorCode::UnknownInfixOperator {
+                    operator: operator.to_string(),
+                    context: Some(format!(
+                        "{}({}){}{}({})",
+                        lhs.to_string(),
+                        lhs.t().to_string(),
+                        operator,
+                        rhs.to_string(),
+                        rhs.t().to_string(),
+                    )),
+                },
+                source: None,
+            })),
         }
     }
 
@@ -386,6 +512,16 @@ impl Evaluator {
             ObjectType::Integer(_) => Evaluator::downcast_ref_object::<Integer>(&object).value != 0,
             _ => false,
         }
+    }
+
+    pub fn is_error(object: &Box<dyn Object>) -> bool {
+        object.t() == ObjectType::Error
+    }
+
+    pub fn new_error(error: Box<dyn std::error::Error>) -> EvaluatorResult {
+        let i_use_arch_btw_wrapped_error: Arc<dyn std::error::Error> =
+            Arc::<dyn std::error::Error>::from(error);
+        Ok(Box::new(Error::new(i_use_arch_btw_wrapped_error)))
     }
 }
 

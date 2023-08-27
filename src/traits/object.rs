@@ -23,6 +23,27 @@ pub enum IntegerType {
     UMax,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ObjectType {
+    Boolean,
+    Integer(IntegerType),
+    Return,
+    Error,
+    Null,
+}
+
+impl Display for ObjectType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ObjectType::Boolean => write!(f, "boolean"),
+            ObjectType::Return => write!(f, "return"),
+            ObjectType::Error => write!(f, "error"),
+            ObjectType::Null => write!(f, "null"),
+            ObjectType::Integer(i) => i.fmt(f),
+        }
+    }
+}
+
 impl Display for IntegerType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -42,25 +63,6 @@ impl Display for IntegerType {
             IntegerType::USize => write!(f, "usize"),
             IntegerType::UMin => write!(f, "umin"),
             IntegerType::UMax => write!(f, "umax"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ObjectType {
-    Boolean,
-    Integer(IntegerType),
-    Return,
-    Null,
-}
-
-impl Display for ObjectType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ObjectType::Boolean => write!(f, "true/false"),
-            ObjectType::Return => write!(f, "return"),
-            ObjectType::Integer(i) => i.fmt(f),
-            ObjectType::Null => write!(f, "null"),
         }
     }
 }

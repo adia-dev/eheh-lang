@@ -1,8 +1,6 @@
-use std::process::exit;
-
 use crate::{
     lexer::Lexer,
-    objects::{boolean::Boolean, integer::Integer, null::Null},
+    objects::{boolean::Boolean, integer::Integer, null::Null, error::Error},
     parser::Parser,
     traits::{
         node::Node,
@@ -150,6 +148,27 @@ fn test_eval_integer_expression() {
     for (input, value) in expected {
         let object = test_eval_helper(input).unwrap();
         test_eval_integer_helper(object, value, None);
+    }
+}
+
+#[test]
+fn test_error_handling() {
+    let expected: Vec<(&str, &str)> = vec![
+        ("5 + true;", "type mismatch: INTEGER + BOOLEAN"),
+        ("5 + true; 5;", "type mismatch: INTEGER + BOOLEAN"),
+        ("-true", "unknown operator: -BOOLEAN"),
+        ("true + false;", "unknown operator: BOOLEAN + BOOLEAN"),
+        ("5; true + false; 5", "unknown operator: BOOLEAN + BOOLEAN"),
+        (
+            "if (10 > 1) { true + false; }",
+            "unknown operator: BOOLEAN + BOOLEAN",
+        ),
+    ];
+
+    for (input, value) in expected {
+        let object = test_eval_helper(input).unwrap();
+        test_downcast_object_helper::<Error>(&object);
+        println!("{:?}", object);
     }
 }
 

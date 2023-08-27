@@ -1,5 +1,5 @@
 use crate::{
-    log::error::ParserError,
+    log::error::{parser::ParserError, runtime::RuntimeError},
     parser::Parser,
     traits::{expression::Expression, object::Object, statement::Statement},
 };
@@ -9,6 +9,7 @@ pub type ASTExpression = Box<dyn Expression>;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub type ParserResult<T> = std::result::Result<T, ParserError>;
+pub type RuntimeResult<T> = std::result::Result<T, RuntimeError>;
 pub type EvaluatorResult = std::result::Result<Box<dyn Object>, Box<dyn std::error::Error>>;
 
 pub type ASTStatementResult = ParserResult<ASTStatement>;

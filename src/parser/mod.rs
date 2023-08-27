@@ -17,7 +17,7 @@ use crate::{
     },
     lexer::Lexer,
     log::{
-        error::{ParserError, ParserErrorCode},
+        error::{parser::ParserError, parser::ParserErrorCode},
         warning::ParserWarning,
     },
     program::Program,

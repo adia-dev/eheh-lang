@@ -11,8 +11,8 @@ use crate::{
         },
         precedence::Precedence,
         statements::{
-            block_statement::BlockStatement, declare_statements::DeclareStatement,
-            expression_statements::ExpressionStatement, return_statements::ReturnStatement,
+            block_statement::BlockStatement, declare_statement::DeclareStatement,
+            expression_statement::ExpressionStatement, return_statement::ReturnStatement,
         },
     },
     lexer::Lexer,

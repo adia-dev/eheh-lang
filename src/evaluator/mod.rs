@@ -8,8 +8,8 @@ use crate::{
             prefix_expression::PrefixExpression,
         },
         statements::{
-            block_statement::BlockStatement, expression_statements::ExpressionStatement,
-            return_statements::ReturnStatement,
+            block_statement::BlockStatement, expression_statement::ExpressionStatement,
+            return_statement::ReturnStatement,
         },
     },
     objects::{boolean::Boolean, integer::Integer, null::Null, return_::Return},

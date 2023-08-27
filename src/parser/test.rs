@@ -8,8 +8,8 @@ pub mod tests {
                 prefix_expression::PrefixExpression,
             },
             statements::{
-                declare_statements::DeclareStatement, expression_statements::ExpressionStatement,
-                return_statements::ReturnStatement,
+                declare_statement::DeclareStatement, expression_statement::ExpressionStatement,
+                return_statement::ReturnStatement,
             },
         },
         lexer::Lexer,

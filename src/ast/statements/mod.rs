@@ -1,4 +1,5 @@
 pub mod block_statement;
-pub mod declare_statements;
-pub mod expression_statements;
-pub mod return_statements;
+pub mod declare_statement;
+pub mod expression_statement;
+pub mod return_statement;
+pub mod defer_statement;

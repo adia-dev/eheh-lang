@@ -72,6 +72,8 @@ pub enum KeywordTokenType {
     DO,
     NULL,
     RETURN,
+    DEFER,
+    ERRDEFER,
 }
 
 impl TokenType {
@@ -169,7 +171,9 @@ impl KeywordTokenType {
             KeywordTokenType::END => "end".to_string(),
             KeywordTokenType::DO => "do".to_string(),
             KeywordTokenType::NULL => "null".to_string(),
-            KeywordTokenType::RETURN => "rreturn".to_string(),
+            KeywordTokenType::RETURN => "return".to_string(),
+            KeywordTokenType::DEFER => "defer".to_string(),
+            KeywordTokenType::ERRDEFER => "errdefer".to_string(),
             kw => kw.to_string(),
         }
     }
@@ -188,6 +192,8 @@ impl KeywordTokenType {
             "do" => Some(KeywordTokenType::DO),
             "null" => Some(KeywordTokenType::NULL),
             "return" => Some(KeywordTokenType::RETURN),
+            "defer" => Some(KeywordTokenType::DEFER),
+            "errdefer" => Some(KeywordTokenType::ERRDEFER),
             _ => None,
         }
     }

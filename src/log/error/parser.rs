@@ -89,7 +89,7 @@ impl Display for ParserErrorCode {
                     )?;
                     match expected_token_types.len() {
                         1 => {
-                            write!(f, ": expected `{}`", expected_token_types[0].to_literal())?;
+                            writeln!(f, ": expected `{}`", expected_token_types[0].to_literal())?;
                         }
                         _ => {
                             write!(
@@ -102,7 +102,7 @@ impl Display for ParserErrorCode {
                                     .join(", ")
                             )?;
 
-                            write!(
+                            writeln!(
                                 f,
                                 " or `{}`",
                                 expected_token_types.last().unwrap().to_literal()

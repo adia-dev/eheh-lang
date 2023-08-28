@@ -140,6 +140,7 @@ impl<'a> Parser<'a> {
             TokenType::GT,
             TokenType::GTE,
             TokenType::EQ,
+            TokenType::ASSIGN,
             TokenType::NEQ,
             TokenType::LSHIFT,
             TokenType::RSHIFT,

@@ -1,6 +1,6 @@
 use crate::{
     lexer::Lexer,
-    objects::{boolean::Boolean, integer::Integer, null::Null, error::Error},
+    objects::{boolean::Boolean, error::Error, integer::Integer, null::Null, environment::{self, Environment}},
     parser::Parser,
     traits::{
         node::Node,
@@ -163,12 +163,27 @@ fn test_error_handling() {
             "if (10 > 1) { true + false; }",
             "unknown operator: BOOLEAN + BOOLEAN",
         ),
+        ("foobar", "Identifier not found"),
     ];
 
     for (input, value) in expected {
         let object = test_eval_helper(input).unwrap();
-        test_downcast_object_helper::<Error>(&object);
-        println!("{:?}", object);
+        let error  = test_downcast_object_helper::<Error>(&object);
+    }
+}
+
+#[test]
+fn test_eval_declare_statements() {
+    let expected: Vec<(&str, i64)> = vec![
+        ("let a = 5; a;", 5),
+        ("let a = 5 * 5; a;", 25),
+        ("let a = 5; let b = a; b;", 5),
+        ("let a = 5; let b = a; let c = a + b + 5; c;", 15),
+    ];
+
+    for (input, value) in expected {
+        let object = test_eval_helper(input).unwrap();
+        test_downcast_object_helper::<Integer>(&object);
     }
 }
 
@@ -177,7 +192,9 @@ fn test_eval_helper(input: &str) -> EvaluatorResult {
     let mut parser = Parser::new(&mut lexer);
     let program = parser.parse().unwrap();
 
-    Evaluator::eval(Box::new(program.as_node()))
+    let mut environment = Environment::new();
+
+    Evaluator::eval(Box::new(program.as_node()), &mut environment)
 }
 
 fn test_eval_integer_helper(object: Box<dyn Object>, value: i64, t: Option<ObjectType>) -> Integer {

@@ -1,10 +1,13 @@
 use std::fmt::Display;
 
-use crate::token::token_type::TokenType;
+use crate::token::token_type::{KeywordTokenType, TokenType};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Precedence {
     LOWEST = -1,
+    RETURN,
+    CLOSURE,
+    ASSIGN,
     RANGE,
     OR,
     AND,
@@ -18,7 +21,7 @@ pub enum Precedence {
     PREFIX,
     FieldAccess,
     CALL,
-    PATH
+    PATH,
 }
 
 impl Precedence {
@@ -32,6 +35,8 @@ impl Precedence {
             TokenType::IRANGE | TokenType::RANGE => Self::RANGE,
             TokenType::PLUS | TokenType::MINUS => Self::SUM,
             TokenType::ASTERISK | TokenType::FORWARDSLASH | TokenType::PERCENT => Self::PRODUCT,
+            TokenType::ASSIGN => Self::ASSIGN,
+            TokenType::KEYWORD(KeywordTokenType::RETURN) => Self::RETURN,
             TokenType::EXPONENT | TokenType::DASTERISK => Self::EXPONENT,
             TokenType::INCR | TokenType::DECR | TokenType::BANG => Self::PREFIX,
             TokenType::LPAREN => Self::CALL,

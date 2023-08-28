@@ -7,8 +7,8 @@ use crate::token::{token_type::TokenType, Token};
 #[derive(Debug, Clone)]
 #[repr(usize)]
 pub enum RuntimeErrorCode {
-    VariableNotFound {
-        variable_name: String,
+    IdentifierNotFound {
+        identifier: String,
         context: Option<String>,
     },
     DivisionByZero {
@@ -73,13 +73,25 @@ impl RuntimeErrorCode {
 impl Display for RuntimeErrorCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RuntimeErrorCode::VariableNotFound {
-                variable_name,
+            RuntimeErrorCode::IdentifierNotFound {
+                identifier,
                 context,
             } => {
-                write!(f, "Variable '{}' not found", variable_name)?;
+                write!(f, "{}", format!("runtime_error[E{:0>5}]", self.id()).red())?;
+                writeln!(f, ": Identifier '{}' not found", identifier)?;
+
                 if let Some(ctx) = context {
-                    writeln!(f, "\n{}", ctx)?;
+                    let identifier_pos = ctx.find(identifier).unwrap();
+
+                    writeln!(f, "    {}", "|".blue())?;
+                    writeln!(f, "{:3} {}\t{}", "10".to_string().blue(), "|".blue(), ctx)?;
+                    write!(
+                        f,
+                        "    {}\t{}{} ",
+                        "|".blue(),
+                        " ".repeat(identifier_pos),
+                        "^".repeat(identifier.len()).red()
+                    )?;
                 }
             }
             RuntimeErrorCode::DivisionByZero { location } => {
@@ -87,9 +99,20 @@ impl Display for RuntimeErrorCode {
             }
             RuntimeErrorCode::InvalidOperation { operation, context } => {
                 write!(f, "{}", format!("runtime_error[E{:0>5}]", self.id()).red())?;
-                write!(f, ": Invalid operation: {}", operation)?;
+                writeln!(f, ": Invalid operation: {}", operation)?;
+
                 if let Some(ctx) = context {
-                    writeln!(f, "\n{}", ctx)?;
+                    let operation_pos = ctx.find(operation).unwrap();
+
+                    writeln!(f, "    {}", "|".blue())?;
+                    writeln!(f, "{:3} {}\t{}", "10".to_string().blue(), "|".blue(), ctx)?;
+                    writeln!(
+                        f,
+                        "    {}\t{}{} ",
+                        "|".blue(),
+                        " ".repeat(operation_pos),
+                        "^".repeat(operation.len()).red()
+                    )?;
                 }
             }
             RuntimeErrorCode::TypeMismatch {
@@ -109,7 +132,7 @@ impl Display for RuntimeErrorCode {
                 function_name,
                 context,
             } => {
-                write!(f, "Function '{}' not found", function_name)?;
+                writeln!(f, "Function '{}' not found", function_name)?;
                 if let Some(ctx) = context {
                     writeln!(f, "\n{}", ctx)?;
                 }

@@ -4,17 +4,24 @@ use std::sync::Arc;
 use crate::{
     ast::{
         expressions::{
-            boolean_expression::BooleanExpression, if_expression::IfExpression,
-            infix_expression::InfixExpression, integer_literal::IntegerLiteral,
-            prefix_expression::PrefixExpression,
+            boolean_expression::BooleanExpression, identifier::Identifier,
+            if_expression::IfExpression, infix_expression::InfixExpression,
+            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
         },
         statements::{
-            block_statement::BlockStatement, expression_statement::ExpressionStatement,
-            return_statement::ReturnStatement,
+            block_statement::BlockStatement, declare_statement::DeclareStatement,
+            expression_statement::ExpressionStatement, return_statement::ReturnStatement,
         },
     },
     log::error::runtime::{RuntimeError, RuntimeErrorCode},
-    objects::{boolean::Boolean, error::Error, integer::Integer, null::Null, return_::Return},
+    objects::{
+        boolean::Boolean,
+        environment::{self, Environment},
+        error::Error,
+        integer::Integer,
+        null::Null,
+        return_::Return,
+    },
     program::Program,
     token::{
         token_type::{KeywordTokenType, TokenType},
@@ -39,22 +46,37 @@ static ONE: Integer = Integer::new(1);
 static NULL: Null = Null::new();
 
 impl Evaluator {
-    pub fn eval(node: Box<&dyn Node>) -> EvaluatorResult {
+    pub fn eval<'a>(node: Box<&dyn Node>, environment: &'a mut Environment) -> EvaluatorResult {
         if let Some(program) = node.as_any().downcast_ref::<Program>() {
-            return Evaluator::eval_program(&program.statements);
+            return Evaluator::eval_program(&program.statements, environment);
         }
 
         if let Some(block) = node.as_any().downcast_ref::<BlockStatement>() {
-            return Evaluator::eval_block_statement(&block.statements);
+            return Evaluator::eval_block_statement(&block.statements, environment);
         }
 
         if let Some(exp_stmt) = node.as_any().downcast_ref::<ExpressionStatement>() {
-            return Evaluator::eval(Box::new(exp_stmt.expression.as_node()));
+            return Evaluator::eval(Box::new(exp_stmt.expression.as_node()), environment);
+        }
+
+        if let Some(declare_stmt) = node.as_any().downcast_ref::<DeclareStatement>() {
+            if let Some(exp) = &declare_stmt.value {
+                let declare_value = Evaluator::eval(Box::new(exp.as_node()), environment)?;
+
+                if Evaluator::is_error(&declare_value) {
+                    return Ok(declare_value);
+                }
+                environment.set(declare_stmt.name.value.clone(), &declare_value);
+
+                return Ok(Box::new(Return::new(Some(declare_value))));
+            } else {
+                return Ok(Box::new(NULL.clone()));
+            }
         }
 
         if let Some(return_stmt) = node.as_any().downcast_ref::<ReturnStatement>() {
             if let Some(exp) = &return_stmt.value {
-                let return_value = Evaluator::eval(Box::new(exp.as_node()))?;
+                let return_value = Evaluator::eval(Box::new(exp.as_node()), environment)?;
 
                 if Evaluator::is_error(&return_value) {
                     return Ok(return_value);
@@ -66,8 +88,12 @@ impl Evaluator {
             }
         }
 
+        if let Some(identifier) = node.as_any().downcast_ref::<Identifier>() {
+            return Evaluator::eval_identifier(&identifier, environment);
+        }
+
         if let Some(if_exp) = node.as_any().downcast_ref::<IfExpression>() {
-            return Evaluator::eval_if_expression(&if_exp);
+            return Evaluator::eval_if_expression(&if_exp, environment);
         }
 
         if let Some(integer_literal) = node.as_any().downcast_ref::<IntegerLiteral>() {
@@ -83,13 +109,13 @@ impl Evaluator {
         }
 
         if let Some(infix_expression) = node.as_any().downcast_ref::<InfixExpression>() {
-            let lhs = Evaluator::eval(Box::new(infix_expression.lhs.as_node()))?;
+            let lhs = Evaluator::eval(Box::new(infix_expression.lhs.as_node()), environment)?;
 
             if Evaluator::is_error(&lhs) {
                 return Ok(lhs);
             }
 
-            let rhs = Evaluator::eval(Box::new(infix_expression.rhs.as_node()))?;
+            let rhs = Evaluator::eval(Box::new(infix_expression.rhs.as_node()), environment)?;
             if Evaluator::is_error(&rhs) {
                 return Ok(rhs);
             }
@@ -97,7 +123,7 @@ impl Evaluator {
         }
 
         if let Some(prefix_expression) = node.as_any().downcast_ref::<PrefixExpression>() {
-            let rhs = Evaluator::eval(Box::new(prefix_expression.rhs.as_node()))?;
+            let rhs = Evaluator::eval(Box::new(prefix_expression.rhs.as_node()), environment)?;
             if Evaluator::is_error(&rhs) {
                 return Ok(rhs);
             }
@@ -108,7 +134,10 @@ impl Evaluator {
         return Ok(Box::new(NULL.clone()));
     }
 
-    fn eval_program(statements: &Vec<ASTStatement>) -> EvaluatorResult {
+    fn eval_program(
+        statements: &Vec<ASTStatement>,
+        environment: &mut Environment,
+    ) -> EvaluatorResult {
         if statements.is_empty() {
             return Ok(Box::new(NULL.clone()));
         }
@@ -116,7 +145,7 @@ impl Evaluator {
         let mut object: Option<Box<dyn Object>> = None;
 
         for (stmt) in statements {
-            let evaluated = Evaluator::eval(Box::new(stmt.as_node()))?;
+            let evaluated = Evaluator::eval(Box::new(stmt.as_node()), environment)?;
 
             match evaluated.t() {
                 ObjectType::Return => {
@@ -144,7 +173,10 @@ impl Evaluator {
         }
     }
 
-    fn eval_block_statement(statements: &Vec<ASTStatement>) -> EvaluatorResult {
+    fn eval_block_statement(
+        statements: &Vec<ASTStatement>,
+        environment: &mut Environment,
+    ) -> EvaluatorResult {
         if statements.is_empty() {
             return Ok(Box::new(NULL.clone()));
         }
@@ -152,7 +184,7 @@ impl Evaluator {
         let mut object: Option<Box<dyn Object>> = None;
 
         for (stmt) in statements {
-            let evaluated = Evaluator::eval(Box::new(stmt.as_node()))?;
+            let evaluated = Evaluator::eval(Box::new(stmt.as_node()), environment)?;
 
             if evaluated.t() == ObjectType::Return || evaluated.t() == ObjectType::Error {
                 return Ok(evaluated);
@@ -168,13 +200,27 @@ impl Evaluator {
         }
     }
 
-    fn eval_if_expression(if_exp: &IfExpression) -> EvaluatorResult {
-        let condition = Evaluator::eval(Box::new(if_exp.condition.as_node()))?;
+    fn eval_identifier(identifier: &Identifier, environment: &mut Environment) -> EvaluatorResult {
+        if let Some(value) = environment.get(identifier.value.clone()) {
+            Ok(value.clone())
+        } else {
+            Evaluator::new_error(Box::new(RuntimeError {
+                code: RuntimeErrorCode::IdentifierNotFound {
+                    context: Some(identifier.value.clone()),
+                    identifier: identifier.value.clone(),
+                },
+                source: None,
+            }))
+        }
+    }
+
+    fn eval_if_expression(if_exp: &IfExpression, environment: &mut Environment) -> EvaluatorResult {
+        let condition = Evaluator::eval(Box::new(if_exp.condition.as_node()), environment)?;
 
         if Evaluator::is_truthy(&condition) {
-            return Evaluator::eval(Box::new(if_exp.consequence.as_node()));
+            return Evaluator::eval(Box::new(if_exp.consequence.as_node()), environment);
         } else if let Some(alt) = &if_exp.alternative {
-            return Evaluator::eval(Box::new(alt.as_node()));
+            return Evaluator::eval(Box::new(alt.as_node()), environment);
         } else {
             return Ok(Box::new(NULL.clone()));
         }
@@ -343,6 +389,7 @@ impl Evaluator {
                     }
                 }
             }
+
             _ => Evaluator::new_error(Box::new(RuntimeError {
                 code: RuntimeErrorCode::InvalidOperation {
                     context: None,

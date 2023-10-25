@@ -4,7 +4,7 @@ use crate::{
     types::ASTExpression,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PrefixExpression {
     pub token: Token,
     pub operator: String,
@@ -24,6 +24,9 @@ impl PrefixExpression {
 impl Expression for PrefixExpression {
     fn eval(&self) -> String {
         "".to_string()
+    }
+    fn clone_boxed(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
     }
 }
 

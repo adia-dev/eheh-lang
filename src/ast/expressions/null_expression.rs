@@ -3,7 +3,7 @@ use crate::{
     traits::{expression::Expression, node::Node},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NullExpression {
     pub token: Token,
 }
@@ -17,6 +17,9 @@ impl NullExpression {
 impl Expression for NullExpression {
     fn eval(&self) -> String {
         self.get_token_literal()
+    }
+    fn clone_boxed(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
     }
 }
 

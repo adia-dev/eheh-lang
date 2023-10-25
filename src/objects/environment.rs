@@ -3,18 +3,26 @@ use std::collections::HashMap;
 use crate::traits::object::Object;
 
 #[derive(Debug, Clone)]
-pub struct Environment {
+pub struct Environment<'a> {
     pub store: HashMap<String, Box<dyn Object>>,
+    pub outer: Option<&'a Environment<'a>>,
 }
 
-impl Environment {
-    pub fn new() -> Self {
+impl<'a> Environment<'a> {
+    pub fn new(outer: Option<&'a Environment<'a>>) -> Self {
         Self {
             store: HashMap::new(),
+            outer,
         }
     }
 
     pub fn get(&self, name: String) -> Option<&Box<dyn Object>> {
+        if let Some(outer_env) = self.outer {
+            if let Some(value) = outer_env.get(name.clone()) {
+                return Some(value);
+            }
+        }
+
         self.store.get(&name)
     }
 

@@ -6,7 +6,7 @@ use crate::{
     types::ASTStatement,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BlockStatement {
     pub token: Token,
     pub statements: Vec<ASTStatement>,
@@ -37,6 +37,9 @@ impl Node for BlockStatement {
 
 impl Statement for BlockStatement {
     fn process(&self) {}
+    fn clone_boxed(&self) -> Box<dyn Statement> {
+        Box::new(self.clone())
+    }
 }
 
 impl ToString for BlockStatement {

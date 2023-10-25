@@ -192,7 +192,7 @@ fn test_eval_helper(input: &str) -> EvaluatorResult {
     let mut parser = Parser::new(&mut lexer);
     let program = parser.parse().unwrap();
 
-    let mut environment = Environment::new();
+    let mut environment = Environment::new(None);
 
     Evaluator::eval(Box::new(program.as_node()), &mut environment)
 }

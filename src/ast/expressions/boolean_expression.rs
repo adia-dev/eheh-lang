@@ -3,7 +3,7 @@ use crate::{
     traits::{expression::Expression, node::Node},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BooleanExpression {
     pub token: Token,
     pub value: bool,
@@ -27,6 +27,10 @@ impl BooleanExpression {
 impl Expression for BooleanExpression {
     fn eval(&self) -> String {
         self.get_token_literal()
+    }
+
+    fn clone_boxed(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
     }
 }
 

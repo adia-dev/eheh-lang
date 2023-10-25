@@ -5,7 +5,7 @@ use crate::{
     types::ASTExpression,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IfExpression {
     pub token: Token,
     pub condition: ASTExpression,
@@ -32,6 +32,9 @@ impl IfExpression {
 impl Expression for IfExpression {
     fn eval(&self) -> String {
         "".to_string()
+    }
+    fn clone_boxed(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
     }
 }
 

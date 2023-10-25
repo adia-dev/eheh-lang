@@ -4,7 +4,7 @@ use crate::{
     types::ASTExpression,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CallExpression {
     pub token: Token,
     pub function: ASTExpression,
@@ -24,6 +24,9 @@ impl CallExpression {
 impl Expression for CallExpression {
     fn eval(&self) -> String {
         "".to_string()
+    }
+    fn clone_boxed(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
     }
 }
 

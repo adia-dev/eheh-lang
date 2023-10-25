@@ -6,7 +6,7 @@ use crate::{
     types::ASTExpression,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ReturnStatement {
     pub token: Token,
     pub value: Option<ASTExpression>,
@@ -38,6 +38,9 @@ impl Node for ReturnStatement {
 
 impl Statement for ReturnStatement {
     fn process(&self) {}
+    fn clone_boxed(&self) -> Box<dyn Statement> {
+        Box::new(self.clone())
+    }
 }
 
 impl ToString for ReturnStatement {

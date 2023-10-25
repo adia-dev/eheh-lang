@@ -5,22 +5,22 @@ use crate::{
     traits::node::Node,
 };
 
-pub struct REPL {
+pub struct REPL<'a> {
     pub version: String,
     pub buffer: String,
     pub index: usize,
     pub is_running: bool,
-    pub environment: Environment,
+    pub environment: Environment<'a>,
 }
 
-impl REPL {
+impl<'a> REPL<'a> {
     pub fn new() -> Self {
         Self {
             buffer: String::new(),
             version: "v0.1.0".to_string(),
             index: 1,
             is_running: false,
-            environment: Environment::new(),
+            environment: Environment::new(None),
         }
     }
 

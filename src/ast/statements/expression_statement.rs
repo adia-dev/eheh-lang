@@ -6,7 +6,7 @@ use crate::{
     types::ASTExpression,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExpressionStatement {
     pub token: Token,
     pub expression: ASTExpression,
@@ -37,6 +37,9 @@ impl Node for ExpressionStatement {
 
 impl Statement for ExpressionStatement {
     fn process(&self) {}
+    fn clone_boxed(&self) -> Box<dyn Statement> {
+        Box::new(self.clone())
+    }
 }
 
 impl ToString for ExpressionStatement {

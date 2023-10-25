@@ -3,7 +3,7 @@ use crate::{
     traits::{expression::Expression, node::Node},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Identifier {
     pub token: Token,
     pub value: String,
@@ -27,6 +27,9 @@ impl Identifier {
 impl Expression for Identifier {
     fn eval(&self) -> String {
         self.get_token_literal()
+    }
+    fn clone_boxed(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
     }
 }
 

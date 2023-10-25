@@ -6,7 +6,7 @@ use crate::{
 
 use super::{identifier::Identifier, typed_identifier::TypedIdentifier};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionLiteral {
     pub token: Token,
     pub name: Option<Identifier>,
@@ -39,6 +39,9 @@ impl FunctionLiteral {
 impl Expression for FunctionLiteral {
     fn eval(&self) -> String {
         "".to_string()
+    }
+    fn clone_boxed(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
     }
 }
 

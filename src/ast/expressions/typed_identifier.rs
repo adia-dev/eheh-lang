@@ -2,7 +2,7 @@ use crate::traits::{expression::Expression, node::Node};
 
 use super::identifier::Identifier;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypedIdentifier {
     pub identifier: Identifier,
     pub t: Option<Identifier>,
@@ -17,6 +17,10 @@ impl TypedIdentifier {
 impl Expression for TypedIdentifier {
     fn eval(&self) -> String {
         self.get_token_literal()
+    }
+
+    fn clone_boxed(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
     }
 }
 

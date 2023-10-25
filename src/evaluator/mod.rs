@@ -4,9 +4,14 @@ use std::sync::Arc;
 use crate::{
     ast::{
         expressions::{
-            boolean_expression::BooleanExpression, identifier::Identifier,
-            if_expression::IfExpression, infix_expression::InfixExpression,
-            integer_literal::IntegerLiteral, prefix_expression::PrefixExpression,
+            boolean_expression::BooleanExpression,
+            call_expression::CallExpression,
+            function_literal::{self, FunctionLiteral},
+            identifier::Identifier,
+            if_expression::IfExpression,
+            infix_expression::InfixExpression,
+            integer_literal::IntegerLiteral,
+            prefix_expression::PrefixExpression,
         },
         statements::{
             block_statement::BlockStatement, declare_statement::DeclareStatement,
@@ -31,7 +36,7 @@ use crate::{
         node::Node,
         object::{Object, ObjectType},
     },
-    types::{ASTStatement, EvaluatorResult},
+    types::{ASTExpression, ASTStatement, EvaluatorResult, Result},
 };
 
 #[derive(Debug, Clone)]
@@ -96,6 +101,21 @@ impl Evaluator {
             return Evaluator::eval_if_expression(&if_exp, environment);
         }
 
+        if let Some(call_exp) = node.as_any().downcast_ref::<CallExpression>() {
+            let function = Evaluator::eval(Box::new(call_exp.function.as_node()), environment)?;
+            if Evaluator::is_error(&function) {
+                return Ok(function);
+            }
+
+            let args = Evaluator::eval_expressions(&call_exp.args, environment)?;
+
+            if args.len() == 1 && Evaluator::is_error(&args[0]) {
+                return Ok(args[0].clone());
+            }
+
+            return Evaluator::apply_function(function, args);
+        }
+
         if let Some(integer_literal) = node.as_any().downcast_ref::<IntegerLiteral>() {
             return Ok(Box::new(Integer::new(integer_literal.value)));
         }
@@ -131,6 +151,10 @@ impl Evaluator {
             return Evaluator::eval_prefix_expression(prefix_expression.operator.as_str(), rhs);
         }
 
+        return Ok(Box::new(NULL.clone()));
+    }
+
+    fn apply_function(function: Box<dyn Object>, args: Vec<Box<dyn Object>>) -> EvaluatorResult {
         return Ok(Box::new(NULL.clone()));
     }
 
@@ -198,6 +222,25 @@ impl Evaluator {
         } else {
             Ok(Box::new(NULL.clone()))
         }
+    }
+
+    fn eval_expressions(
+        exps: &Vec<ASTExpression>,
+        environment: &mut Environment,
+    ) -> Result<Vec<Box<dyn Object>>> {
+        let mut objects: Vec<Box<dyn Object>> = Vec::new();
+
+        for (exp) in exps {
+            let evaluated = Evaluator::eval(Box::new(exp.as_node()), environment)?;
+
+            if evaluated.t() == ObjectType::Return || evaluated.t() == ObjectType::Error {
+                return Ok(vec![evaluated]);
+            }
+
+            objects.push(evaluated);
+        }
+
+        return Ok(objects);
     }
 
     fn eval_identifier(identifier: &Identifier, environment: &mut Environment) -> EvaluatorResult {

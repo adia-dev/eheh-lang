@@ -3,7 +3,7 @@ use crate::{
     traits::{expression::Expression, node::Node},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IntegerLiteral {
     pub token: Token,
     pub value: i64,
@@ -27,6 +27,9 @@ impl IntegerLiteral {
 impl Expression for IntegerLiteral {
     fn eval(&self) -> String {
         self.value.to_string()
+    }
+    fn clone_boxed(&self) -> Box<dyn Expression> {
+        Box::new(self.clone())
     }
 }
 

@@ -6,7 +6,7 @@ use crate::{
     types::ASTExpression,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DeferStatement {
     pub token: Token,
     pub value: ASTExpression,
@@ -37,6 +37,9 @@ impl Node for DeferStatement {
 
 impl Statement for DeferStatement {
     fn process(&self) {}
+    fn clone_boxed(&self) -> Box<dyn Statement> {
+        Box::new(self.clone())
+    }
 }
 
 impl ToString for DeferStatement {

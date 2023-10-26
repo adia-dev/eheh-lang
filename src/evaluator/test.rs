@@ -2,7 +2,13 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     lexer::Lexer,
-    objects::{boolean::Boolean, error::Error, integer::Integer, null::Null, environment::{self, Environment}},
+    objects::{
+        boolean::Boolean,
+        environment::{self, Environment},
+        error::Error,
+        integer::Integer,
+        null::Null,
+    },
     parser::Parser,
     traits::{
         node::Node,
@@ -118,10 +124,44 @@ fn test_eval_if_expression() {
         if object.t() == ObjectType::Null {
             test_downcast_object_helper::<Null>(&expected_object);
         } else {
-            let integer = test_downcast_object_helper::<Integer>(&expected_object);
+            let integer = test_downcast_object_helper::<Integer>(&object);
             let expected_integer = test_downcast_object_helper::<Integer>(&expected_object);
             test_eval_integer_helper(object, expected_integer.value, Some(expected_integer.t()));
         }
+    }
+}
+
+#[test]
+fn test_eval_function_literal() {
+    let expected: Vec<(&str, Box<dyn Object>)> = vec![
+        (
+            "let identity = fn(x) { x; }; identity(5);",
+            Box::new(Integer::new(5)),
+        ),
+        (
+            "let identity = fn(x) { return x; }; identity(5);",
+            Box::new(Integer::new(5)),
+        ),
+        (
+            "let double = fn(x) { x * 2; }; double(5);",
+            Box::new(Integer::new(10)),
+        ),
+        (
+            "let add = fn(x, y) { x + y; }; add(5, 5);",
+            Box::new(Integer::new(10)),
+        ),
+        (
+            "let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));",
+            Box::new(Integer::new(20)),
+        ),
+        ("fn(x) { x; }(5)", Box::new(Integer::new(5))),
+    ];
+
+    for (input, expected_object) in expected {
+        let object = test_eval_helper(input).unwrap();
+        let integer = test_downcast_object_helper::<Integer>(&object);
+        let expected_integer = test_downcast_object_helper::<Integer>(&expected_object);
+        test_eval_integer_helper(object, expected_integer.value, Some(expected_integer.t()));
     }
 }
 
@@ -170,7 +210,7 @@ fn test_error_handling() {
 
     for (input, value) in expected {
         let object = test_eval_helper(input).unwrap();
-        let error  = test_downcast_object_helper::<Error>(&object);
+        let error = test_downcast_object_helper::<Error>(&object);
     }
 }
 

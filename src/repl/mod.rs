@@ -1,8 +1,15 @@
-use std::{io::{self, stdout, Write}, rc::Rc, cell::RefCell};
+use std::{
+    cell::RefCell,
+    io::{self, stdout, Write},
+    rc::Rc,
+};
 
 use crate::{
-    evaluator::Evaluator, lexer::Lexer, objects::environment::Environment, parser::Parser,
-    traits::node::Node,
+    evaluator::Evaluator,
+    lexer::Lexer,
+    objects::environment::Environment,
+    parser::Parser,
+    traits::{node::Node, object::ObjectType},
 };
 
 pub struct REPL {
@@ -81,7 +88,10 @@ impl REPL {
 
         let evaluated =
             Evaluator::eval(Box::new(program.as_node()), self.environment.clone()).unwrap();
-        println!("{}\n", evaluated.to_string());
+
+        if evaluated.t() != ObjectType::Null {
+            println!("{}\n", evaluated.to_string());
+        }
     }
 
     fn consume_command(&mut self) -> bool {

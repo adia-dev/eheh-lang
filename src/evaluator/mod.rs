@@ -1,5 +1,5 @@
 use core::panic;
-use std::{sync::Arc, rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use crate::{
     ast::{
@@ -67,15 +67,16 @@ impl Evaluator {
 
         if let Some(declare_stmt) = node.as_any().downcast_ref::<DeclareStatement>() {
             if let Some(exp) = &declare_stmt.value {
-                let declare_value = Evaluator::eval(Box::new(exp.as_node()), Rc::clone(&environment))?;
+                let declare_value =
+                    Evaluator::eval(Box::new(exp.as_node()), Rc::clone(&environment))?;
 
                 if Evaluator::is_error(&declare_value) {
                     return Ok(declare_value);
                 }
 
-                environment.borrow_mut().set(declare_stmt.name.value.clone(), declare_value.clone());
-
-                return Ok(Box::new(Return::new(Some(declare_value))));
+                environment
+                    .borrow_mut()
+                    .set(declare_stmt.name.value.clone(), declare_value.clone());
             } else {
                 return Ok(Box::new(NULL.clone()));
             }
@@ -104,7 +105,10 @@ impl Evaluator {
         }
 
         if let Some(call_exp) = node.as_any().downcast_ref::<CallExpression>() {
-            let function = Evaluator::eval(Box::new(call_exp.function.as_node()), Rc::clone(&environment))?;
+            let function = Evaluator::eval(
+                Box::new(call_exp.function.as_node()),
+                Rc::clone(&environment),
+            )?;
 
             if Evaluator::is_error(&function) {
                 return Ok(function);
@@ -140,7 +144,10 @@ impl Evaluator {
         }
 
         if let Some(infix_expression) = node.as_any().downcast_ref::<InfixExpression>() {
-            let lhs = Evaluator::eval(Box::new(infix_expression.lhs.as_node()), Rc::clone(&environment))?;
+            let lhs = Evaluator::eval(
+                Box::new(infix_expression.lhs.as_node()),
+                Rc::clone(&environment),
+            )?;
 
             if Evaluator::is_error(&lhs) {
                 return Ok(lhs);
@@ -174,11 +181,15 @@ impl Evaluator {
         return Evaluator::unwrap_return_value(evaluated);
     }
 
-    fn extend_environment<'a>(fun: &'a Function, args: Vec<Box<dyn Object>>) -> Rc<RefCell<Environment>> {
+    fn extend_environment<'a>(
+        fun: &'a Function,
+        args: Vec<Box<dyn Object>>,
+    ) -> Rc<RefCell<Environment>> {
         let mut env = Rc::new(RefCell::new(Environment::new(Some(Rc::clone(&fun.env)))));
 
         for (i, param) in fun.parameters.iter().enumerate() {
-            env.borrow_mut().set(param.identifier.value.clone(), args[i].clone());
+            env.borrow_mut()
+                .set(param.identifier.value.clone(), args[i].clone());
         }
 
         return env;
@@ -278,7 +289,10 @@ impl Evaluator {
         return Ok(objects);
     }
 
-    fn eval_identifier(identifier: &Identifier, environment: Rc<RefCell<Environment>>) -> EvaluatorResult {
+    fn eval_identifier(
+        identifier: &Identifier,
+        environment: Rc<RefCell<Environment>>,
+    ) -> EvaluatorResult {
         if let Some(value) = environment.borrow().get(identifier.value.clone().as_str()) {
             Ok(value.borrow().clone())
         } else {
@@ -292,8 +306,14 @@ impl Evaluator {
         }
     }
 
-    fn eval_if_expression(if_exp: &IfExpression, environment: Rc<RefCell<Environment>>) -> EvaluatorResult {
-        let condition = Evaluator::eval(Box::new(if_exp.condition.as_node()), Rc::clone(&environment))?;
+    fn eval_if_expression(
+        if_exp: &IfExpression,
+        environment: Rc<RefCell<Environment>>,
+    ) -> EvaluatorResult {
+        let condition = Evaluator::eval(
+            Box::new(if_exp.condition.as_node()),
+            Rc::clone(&environment),
+        )?;
 
         if Evaluator::is_truthy(&condition) {
             return Evaluator::eval(Box::new(if_exp.consequence.as_node()), environment);

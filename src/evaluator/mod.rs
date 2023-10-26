@@ -128,11 +128,12 @@ impl Evaluator {
         }
 
         if let Some(function_literal) = node.as_any().downcast_ref::<FunctionLiteral>() {
-            return Ok(Box::new(Function {
-                parameters: function_literal.parameters.clone(),
-                body: function_literal.body.clone(),
-                env: environment,
-            }));
+            return Ok(Box::new(Function::new (
+                function_literal.parameters.clone(),
+                function_literal.body.clone(),
+                function_literal.return_type.clone(),
+                environment,
+            )));
         }
 
         if let Some(boolean) = node.as_any().downcast_ref::<BooleanExpression>() {

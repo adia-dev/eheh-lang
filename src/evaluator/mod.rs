@@ -11,7 +11,7 @@ use crate::{
             if_expression::IfExpression,
             infix_expression::InfixExpression,
             integer_literal::IntegerLiteral,
-            prefix_expression::PrefixExpression,
+            prefix_expression::PrefixExpression, string_literal::StringLiteral,
         },
         statements::{
             block_statement::BlockStatement, declare_statement::DeclareStatement,
@@ -26,7 +26,7 @@ use crate::{
         function::Function,
         integer::Integer,
         null::Null,
-        return_::Return,
+        return_::Return, string_::StringObj,
     },
     program::Program,
     token::{
@@ -127,8 +127,12 @@ impl Evaluator {
             return Ok(Box::new(Integer::new(integer_literal.value)));
         }
 
+        if let Some(string_literal) = node.as_any().downcast_ref::<StringLiteral>() {
+            return Ok(Box::new(StringObj::new(string_literal.content.as_str())));
+        }
+
         if let Some(function_literal) = node.as_any().downcast_ref::<FunctionLiteral>() {
-            return Ok(Box::new(Function::new (
+            return Ok(Box::new(Function::new(
                 function_literal.parameters.clone(),
                 function_literal.body.clone(),
                 function_literal.return_type.clone(),

@@ -7,7 +7,7 @@ use crate::{
             function_literal::FunctionLiteral, identifier::Identifier, if_expression::IfExpression,
             infix_expression::InfixExpression, integer_literal::IntegerLiteral,
             null_expression::NullExpression, prefix_expression::PrefixExpression,
-            typed_identifier::TypedIdentifier,
+            string_literal::StringLiteral, typed_identifier::TypedIdentifier,
         },
         precedence::Precedence,
         statements::{
@@ -98,6 +98,9 @@ impl<'a> Parser<'a> {
         self.prefix_fns
             .insert(TokenType::INT, Self::parse_integer_literal);
 
+        self.prefix_fns
+            .insert(TokenType::STRING, Self::parse_string_literal);
+
         self.prefix_fns.insert(
             TokenType::KEYWORD(KeywordTokenType::IF),
             Self::parse_if_expression,
@@ -126,6 +129,7 @@ impl<'a> Parser<'a> {
     fn register_infix_fns(&mut self) {
         let infix_tokens: Vec<TokenType> = vec![
             TokenType::PLUS,
+            TokenType::INCR,
             TokenType::MINUS,
             TokenType::ASTERISK,
             TokenType::FORWARDSLASH,
@@ -293,6 +297,17 @@ impl<'a> Parser<'a> {
             format!("parse_integer_literal: {}", self.current_token.literal).as_str(),
         );
         Ok(Box::new(IntegerLiteral::from_token(&self.current_token)))
+    }
+
+    fn parse_string_literal(&mut self) -> ASTExpressionResult {
+        self.dbg_trace_inline(
+            format!("parse_string_literal: {}", self.current_token.literal).as_str(),
+        );
+
+        Ok(Box::new(StringLiteral::new(
+            self.current_token.clone(),
+            self.current_token.literal.as_str(),
+        )))
     }
 
     // TODO: REFACTOR THIS DISGUSTING FUNCTION PLEASSEE

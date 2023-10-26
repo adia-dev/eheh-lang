@@ -1,10 +1,11 @@
 pub mod boolean_expression;
-pub mod null_expression;
 pub mod call_expression;
 pub mod function_literal;
 pub mod identifier;
 pub mod if_expression;
 pub mod infix_expression;
 pub mod integer_literal;
+pub mod null_expression;
 pub mod prefix_expression;
+pub mod string_literal;
 pub mod typed_identifier;

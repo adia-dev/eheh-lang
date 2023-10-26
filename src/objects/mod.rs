@@ -1,7 +1,9 @@
 pub mod boolean;
-pub mod integer;
-pub mod return_;
+pub mod environment;
 pub mod error;
 pub mod function;
-pub mod environment;
+pub mod integer;
 pub mod null;
+pub mod string_;
+pub mod return_;
+

@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{
     lexer::Lexer,
     objects::{boolean::Boolean, error::Error, integer::Integer, null::Null, environment::{self, Environment}},
@@ -192,9 +194,9 @@ fn test_eval_helper(input: &str) -> EvaluatorResult {
     let mut parser = Parser::new(&mut lexer);
     let program = parser.parse().unwrap();
 
-    let mut environment = Environment::new(None);
+    let mut environment = Rc::new(RefCell::new(Environment::new(None)));
 
-    Evaluator::eval(Box::new(program.as_node()), &mut environment)
+    Evaluator::eval(Box::new(program.as_node()), environment)
 }
 
 fn test_eval_integer_helper(object: Box<dyn Object>, value: i64, t: Option<ObjectType>) -> Integer {

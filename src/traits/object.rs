@@ -28,6 +28,7 @@ pub enum ObjectType {
     Boolean,
     Integer(IntegerType),
     Return,
+    Function,
     Error,
     Null,
 }
@@ -38,6 +39,7 @@ impl Display for ObjectType {
             ObjectType::Boolean => write!(f, "boolean"),
             ObjectType::Return => write!(f, "return"),
             ObjectType::Error => write!(f, "error"),
+            ObjectType::Function => write!(f, "function"),
             ObjectType::Null => write!(f, "null"),
             ObjectType::Integer(i) => i.fmt(f),
         }

@@ -1,5 +1,5 @@
 use core::panic;
-use std::sync::Arc;
+use std::{sync::Arc, rc::Rc, cell::RefCell};
 
 use crate::{
     ast::{
@@ -23,6 +23,7 @@ use crate::{
         boolean::Boolean,
         environment::{self, Environment},
         error::Error,
+        function::Function,
         integer::Integer,
         null::Null,
         return_::Return,
@@ -51,7 +52,7 @@ static ONE: Integer = Integer::new(1);
 static NULL: Null = Null::new();
 
 impl Evaluator {
-    pub fn eval<'a>(node: Box<&dyn Node>, environment: &'a mut Environment) -> EvaluatorResult {
+    pub fn eval(node: Box<&dyn Node>, environment: Rc<RefCell<Environment>>) -> EvaluatorResult {
         if let Some(program) = node.as_any().downcast_ref::<Program>() {
             return Evaluator::eval_program(&program.statements, environment);
         }
@@ -66,12 +67,13 @@ impl Evaluator {
 
         if let Some(declare_stmt) = node.as_any().downcast_ref::<DeclareStatement>() {
             if let Some(exp) = &declare_stmt.value {
-                let declare_value = Evaluator::eval(Box::new(exp.as_node()), environment)?;
+                let declare_value = Evaluator::eval(Box::new(exp.as_node()), Rc::clone(&environment))?;
 
                 if Evaluator::is_error(&declare_value) {
                     return Ok(declare_value);
                 }
-                environment.set(declare_stmt.name.value.clone(), &declare_value);
+
+                environment.borrow_mut().set(declare_stmt.name.value.clone(), declare_value.clone());
 
                 return Ok(Box::new(Return::new(Some(declare_value))));
             } else {
@@ -102,7 +104,8 @@ impl Evaluator {
         }
 
         if let Some(call_exp) = node.as_any().downcast_ref::<CallExpression>() {
-            let function = Evaluator::eval(Box::new(call_exp.function.as_node()), environment)?;
+            let function = Evaluator::eval(Box::new(call_exp.function.as_node()), Rc::clone(&environment))?;
+
             if Evaluator::is_error(&function) {
                 return Ok(function);
             }
@@ -120,6 +123,14 @@ impl Evaluator {
             return Ok(Box::new(Integer::new(integer_literal.value)));
         }
 
+        if let Some(function_literal) = node.as_any().downcast_ref::<FunctionLiteral>() {
+            return Ok(Box::new(Function {
+                parameters: function_literal.parameters.clone(),
+                body: function_literal.body.clone(),
+                env: environment,
+            }));
+        }
+
         if let Some(boolean) = node.as_any().downcast_ref::<BooleanExpression>() {
             if boolean.value {
                 return Ok(Box::new(TRUE.clone()));
@@ -129,7 +140,7 @@ impl Evaluator {
         }
 
         if let Some(infix_expression) = node.as_any().downcast_ref::<InfixExpression>() {
-            let lhs = Evaluator::eval(Box::new(infix_expression.lhs.as_node()), environment)?;
+            let lhs = Evaluator::eval(Box::new(infix_expression.lhs.as_node()), Rc::clone(&environment))?;
 
             if Evaluator::is_error(&lhs) {
                 return Ok(lhs);
@@ -155,12 +166,36 @@ impl Evaluator {
     }
 
     fn apply_function(function: Box<dyn Object>, args: Vec<Box<dyn Object>>) -> EvaluatorResult {
-        return Ok(Box::new(NULL.clone()));
+        let mut fun = Evaluator::downcast_ref_object::<Function>(&function);
+
+        let mut extended_env = Evaluator::extend_environment(fun, args);
+        let evaluated = Evaluator::eval(Box::new(fun.body.as_node()), extended_env)?;
+
+        return Evaluator::unwrap_return_value(evaluated);
+    }
+
+    fn extend_environment<'a>(fun: &'a Function, args: Vec<Box<dyn Object>>) -> Rc<RefCell<Environment>> {
+        let mut env = Rc::new(RefCell::new(Environment::new(Some(Rc::clone(&fun.env)))));
+
+        for (i, param) in fun.parameters.iter().enumerate() {
+            env.borrow_mut().set(param.identifier.value.clone(), args[i].clone());
+        }
+
+        return env;
+    }
+
+    fn unwrap_return_value(object: Box<dyn Object>) -> EvaluatorResult {
+        match object.as_any_ref().downcast_ref::<Return>() {
+            Some(obj) => Ok(Box::new(obj.clone())),
+            None => {
+                return Ok(object);
+            }
+        }
     }
 
     fn eval_program(
         statements: &Vec<ASTStatement>,
-        environment: &mut Environment,
+        environment: Rc<RefCell<Environment>>,
     ) -> EvaluatorResult {
         if statements.is_empty() {
             return Ok(Box::new(NULL.clone()));
@@ -169,7 +204,7 @@ impl Evaluator {
         let mut object: Option<Box<dyn Object>> = None;
 
         for (stmt) in statements {
-            let evaluated = Evaluator::eval(Box::new(stmt.as_node()), environment)?;
+            let evaluated = Evaluator::eval(Box::new(stmt.as_node()), Rc::clone(&environment))?;
 
             match evaluated.t() {
                 ObjectType::Return => {
@@ -199,7 +234,7 @@ impl Evaluator {
 
     fn eval_block_statement(
         statements: &Vec<ASTStatement>,
-        environment: &mut Environment,
+        environment: Rc<RefCell<Environment>>,
     ) -> EvaluatorResult {
         if statements.is_empty() {
             return Ok(Box::new(NULL.clone()));
@@ -208,7 +243,7 @@ impl Evaluator {
         let mut object: Option<Box<dyn Object>> = None;
 
         for (stmt) in statements {
-            let evaluated = Evaluator::eval(Box::new(stmt.as_node()), environment)?;
+            let evaluated = Evaluator::eval(Box::new(stmt.as_node()), Rc::clone(&environment))?;
 
             if evaluated.t() == ObjectType::Return || evaluated.t() == ObjectType::Error {
                 return Ok(evaluated);
@@ -226,12 +261,12 @@ impl Evaluator {
 
     fn eval_expressions(
         exps: &Vec<ASTExpression>,
-        environment: &mut Environment,
+        environment: Rc<RefCell<Environment>>,
     ) -> Result<Vec<Box<dyn Object>>> {
         let mut objects: Vec<Box<dyn Object>> = Vec::new();
 
         for (exp) in exps {
-            let evaluated = Evaluator::eval(Box::new(exp.as_node()), environment)?;
+            let evaluated = Evaluator::eval(Box::new(exp.as_node()), Rc::clone(&environment))?;
 
             if evaluated.t() == ObjectType::Return || evaluated.t() == ObjectType::Error {
                 return Ok(vec![evaluated]);
@@ -243,9 +278,9 @@ impl Evaluator {
         return Ok(objects);
     }
 
-    fn eval_identifier(identifier: &Identifier, environment: &mut Environment) -> EvaluatorResult {
-        if let Some(value) = environment.get(identifier.value.clone()) {
-            Ok(value.clone())
+    fn eval_identifier(identifier: &Identifier, environment: Rc<RefCell<Environment>>) -> EvaluatorResult {
+        if let Some(value) = environment.borrow().get(identifier.value.clone().as_str()) {
+            Ok(value.borrow().clone())
         } else {
             Evaluator::new_error(Box::new(RuntimeError {
                 code: RuntimeErrorCode::IdentifierNotFound {
@@ -257,8 +292,8 @@ impl Evaluator {
         }
     }
 
-    fn eval_if_expression(if_exp: &IfExpression, environment: &mut Environment) -> EvaluatorResult {
-        let condition = Evaluator::eval(Box::new(if_exp.condition.as_node()), environment)?;
+    fn eval_if_expression(if_exp: &IfExpression, environment: Rc<RefCell<Environment>>) -> EvaluatorResult {
+        let condition = Evaluator::eval(Box::new(if_exp.condition.as_node()), Rc::clone(&environment))?;
 
         if Evaluator::is_truthy(&condition) {
             return Evaluator::eval(Box::new(if_exp.consequence.as_node()), environment);

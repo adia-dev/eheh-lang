@@ -1,3 +1,5 @@
+use std::{rc::Rc, cell::RefCell};
+
 use crate::{
     ast::{
         expressions::typed_identifier::TypedIdentifier, statements::block_statement::BlockStatement,
@@ -8,15 +10,27 @@ use crate::{
 use super::environment::Environment;
 
 #[derive(Debug, Clone)]
-pub struct Function<'a> {
+pub struct Function {
     pub parameters: Vec<TypedIdentifier>,
     pub body: BlockStatement,
-    pub env: Environment<'a>,
+    pub env: Rc<RefCell<Environment>>,
 }
 
-impl<'a> Function<'a> {}
+impl Function {
+    pub fn new(
+        parameters: Vec<TypedIdentifier>,
+        body: BlockStatement,
+        env: Rc<RefCell<Environment>>,
+    ) -> Self {
+        Self {
+            parameters,
+            body,
+            env,
+        }
+    }
+}
 
-impl<'a> Object for Function<'static> {
+impl Object for Function {
     fn t(&self) -> ObjectType {
         ObjectType::Boolean
     }
@@ -41,7 +55,7 @@ impl<'a> Object for Function<'static> {
     }
 }
 
-impl<'a> ToString for Function<'a> {
+impl ToString for Function {
     fn to_string(&self) -> String {
         "".to_owned()
     }

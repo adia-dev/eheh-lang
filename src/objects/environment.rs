@@ -1,44 +1,40 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::traits::object::Object;
 
 #[derive(Debug, Clone)]
-pub struct Environment<'a> {
-    pub store: HashMap<String, Box<dyn Object>>,
-    pub outer: Option<&'a Environment<'a>>,
+pub struct Environment {
+    pub store: HashMap<String, Rc<RefCell<Box<dyn Object>>>>,
+    pub outer: Option<Rc<RefCell<Environment>>>,
 }
 
-impl<'a> Environment<'a> {
-    pub fn new(outer: Option<&'a Environment<'a>>) -> Self {
+impl Environment {
+    pub fn new(outer: Option<Rc<RefCell<Environment>>>) -> Self {
         Self {
             store: HashMap::new(),
             outer,
         }
     }
 
-    pub fn get(&self, name: String) -> Option<&Box<dyn Object>> {
-        if let Some(outer_env) = self.outer {
-            if let Some(value) = outer_env.get(name.clone()) {
-                return Some(value);
+    pub fn get(&self, name: &str) -> Option<Rc<RefCell<Box<dyn Object>>>> {
+        if let Some(outer_env) = &self.outer {
+            if let Some(value) = outer_env.borrow().store.get(name) {
+                return Some(value.clone());
             }
         }
-
-        self.store.get(&name)
+        self.store.get(name).cloned()
     }
 
-    pub fn get_mut(&mut self, name: String) -> Option<&mut Box<dyn Object>> {
-        self.store.get_mut(&name)
+    pub fn set(&mut self, name: String, value: Box<dyn Object>) -> Option<Rc<RefCell<Box<dyn Object>>>> {
+        self.store.insert(name, Rc::new(RefCell::new(value)))
     }
 
-    pub fn set(&mut self, name: String, value: &Box<dyn Object>) -> Option<Box<dyn Object>> {
-        self.store.insert(name, value.clone())
+    pub fn remove(&mut self, name: &str) -> Option<Rc<RefCell<Box<dyn Object>>>> {
+        self.store.remove(name)
     }
 
-    pub fn remove(&mut self, name: String) -> Option<Box<dyn Object>> {
-        self.store.remove(&name)
-    }
-
-    pub fn has(&mut self, name: String) -> bool {
-        self.store.contains_key(&name)
+    pub fn has(&self, name: &str) -> bool {
+        self.store.contains_key(name)
     }
 }
+

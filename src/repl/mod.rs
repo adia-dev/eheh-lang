@@ -1,26 +1,26 @@
-use std::io::{self, stdout, Write};
+use std::{io::{self, stdout, Write}, rc::Rc, cell::RefCell};
 
 use crate::{
     evaluator::Evaluator, lexer::Lexer, objects::environment::Environment, parser::Parser,
     traits::node::Node,
 };
 
-pub struct REPL<'a> {
+pub struct REPL {
     pub version: String,
     pub buffer: String,
     pub index: usize,
     pub is_running: bool,
-    pub environment: Environment<'a>,
+    pub environment: Rc<RefCell<Environment>>,
 }
 
-impl<'a> REPL<'a> {
+impl REPL {
     pub fn new() -> Self {
         Self {
             buffer: String::new(),
             version: "v0.1.0".to_string(),
             index: 1,
             is_running: false,
-            environment: Environment::new(None),
+            environment: Rc::new(RefCell::new(Environment::new(None))),
         }
     }
 
@@ -80,7 +80,7 @@ impl<'a> REPL<'a> {
         }
 
         let evaluated =
-            Evaluator::eval(Box::new(program.as_node()), &mut self.environment).unwrap();
+            Evaluator::eval(Box::new(program.as_node()), self.environment.clone()).unwrap();
         println!("{}\n", evaluated.to_string());
     }
 
@@ -104,12 +104,12 @@ impl<'a> REPL<'a> {
 
     fn print_environment(&self) {
         println!("Environment:");
-        if self.environment.store.is_empty() {
+        if self.environment.borrow().store.is_empty() {
             println!("(empty)");
             return;
         }
-        for (key, object) in self.environment.store.iter() {
-            println!("    - {}: {}", key, object.to_string())
+        for (key, object) in self.environment.borrow().store.iter() {
+            println!("    - {}: {}", key, object.borrow().to_string())
         }
     }
 }

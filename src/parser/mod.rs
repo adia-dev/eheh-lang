@@ -441,7 +441,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_function_literal(&mut self) -> ASTExpressionResult {
-        self.dbg_trace("parse_if_expression");
+        self.dbg_trace("parse_function_literal");
 
         let current_token = self.current_token.clone(); // fn
 
